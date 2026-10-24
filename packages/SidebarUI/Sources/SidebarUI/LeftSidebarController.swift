@@ -189,13 +189,14 @@ enum LeftSibarBarEntry : Comparable, Identifiable {
     }
 }
 
-func leftSidebarEntries(_ filterData: SidebarState, _ badges: ChatListFilterBadges) -> [LeftSibarBarEntry] {
+// MARK: NAGRAM
+func leftSidebarEntries(_ filterData: SidebarState, _ badges: ChatListFilterBadges, nagramArchive: NagramArchiveUnread? = nil, nagramArchiveOpen: Bool = false) -> [LeftSibarBarEntry] {
     return leftSidebarEntries(filterData, badgeForFilter: { filter in
         badges.count(for: filter).map { ($0.count, $0.hasUnmutedUnread) }
-    })
+    }, nagramArchive: nagramArchive, nagramArchiveOpen: nagramArchiveOpen)
 }
 
-func leftSidebarEntries(_ filterData: SidebarState, badgeForFilter: (ChatListFilter) -> (count: Int, hasUnmutedUnread: Bool)?) -> [LeftSibarBarEntry] {
+func leftSidebarEntries(_ filterData: SidebarState, badgeForFilter: (ChatListFilter) -> (count: Int, hasUnmutedUnread: Bool)?, nagramArchive: NagramArchiveUnread? = nil, nagramArchiveOpen: Bool = false) -> [LeftSibarBarEntry] {
     var index: Int = 1
 
     var entries:[LeftSibarBarEntry] = []
@@ -210,7 +211,8 @@ func leftSidebarEntries(_ filterData: SidebarState, badgeForFilter: (ChatListFil
 
     // MARK: NAGRAM
     for shortcut in NagramFolderShortcut.visible {
-        entries.append(.folder(index: index, selected: false, filter: nagramShortcutFilter(shortcut), unreadCount: 0, hasUnmutedUnread: false))
+        let archive = shortcut == .archive ? nagramArchive : nil
+        entries.append(.folder(index: index, selected: shortcut == .archive && nagramArchiveOpen, filter: nagramShortcutFilter(shortcut), unreadCount: archive?.count ?? 0, hasUnmutedUnread: archive?.hasUnmutedUnread ?? false))
         index += 1
     }
 
@@ -263,14 +265,14 @@ public final class LeftSidebarController: SidebarViewController<LeftSidebarView>
         // MARK: NAGRAM
         let arguments = LeftSidebarArguments(context: context, environment: environment, callback: { filter in
             if NagramFolderShortcut(rawValue: filter.sidebarId) != nil {
-                environment.nagramOpenFolderShortcut(filter.sidebarId)
+                environment.nagramOpenFolderShortcut(filter.sidebarId, newWindow: false)
                 return
             }
             environment.navigateToFilter(filter.sidebarId)
 
         }, menuItems: { filter, unreadCount, allMuted in
             if let shortcut = NagramFolderShortcut(rawValue: filter.sidebarId) {
-                return nagramShortcutMenuItems(shortcut)
+                return nagramShortcutMenuItems(shortcut, context: context, environment: environment)
             }
             return filterContextMenuItems(filter, unreadCount: unreadCount, includeAllMuted: allMuted, context: context, environment: environment)
         })
@@ -288,8 +290,9 @@ public final class LeftSidebarController: SidebarViewController<LeftSidebarView>
         }, for: .Click)
 
 
-        let signal: Signal<TableUpdateTransition, NoError> = combineLatest(queue: prepareQueue, filterData, badges, appearanceSignal) |> map { filterData, badges, appearance in
-            let entries = leftSidebarEntries(filterData, badges).map { AppearanceWrapperEntry.init(entry: $0, appearance: appearance) }
+        // MARK: NAGRAM
+        let signal: Signal<TableUpdateTransition, NoError> = combineLatest(queue: prepareQueue, filterData, badges, appearanceSignal, nagramArchiveUnread(engine: context.engine), NagramArchiveState.isOpen.get()) |> map { filterData, badges, appearance, archive, archiveOpen in
+            let entries = leftSidebarEntries(filterData, badges, nagramArchive: archive, nagramArchiveOpen: archiveOpen).map { AppearanceWrapperEntry.init(entry: $0, appearance: appearance) }
             return prepareTransition(left: previous.swap(entries), right: entries, initialSize: initialSize.with { $0 }, arguments: arguments)
         } |> deliverOnMainQueue
 

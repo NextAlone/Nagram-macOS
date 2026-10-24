@@ -57,6 +57,7 @@ private final class Arguments {
     let toggleContactsSort:(PeerListState.ContactsSort)->Void
     // MARK: NAGRAM
     var nagramOpenShortcut: ((NagramFolderShortcut) -> Void)?
+    var nagramArchiveUnread: NagramArchiveUnread?
     init(context: any AccountContextProtocol, joinGroupCall:@escaping(ChatActiveGroupCallInfo)->Void, joinGroup:@escaping(PeerId)->Void, openPendingRequests:@escaping()->Void, dismissPendingRequests: @escaping([PeerId])->Void, openStory:@escaping(StoryInitialIndex?, Bool, Bool)->Void, getStoryInterfaceState:@escaping()->StoryListChatListRowItem.InterfaceState, revealStoriesState:@escaping()->Void, setupFilter: @escaping(ChatListFilter)->Void, openFilterSettings: @escaping(ChatListFilter)->Void, tabsMenuItems: @escaping(ChatListFilter, Int?, Bool?)->[ContextMenuItem], getController:@escaping()->ViewController?, navigationBarLeftPosition:@escaping()->CGFloat, contextMenu: @escaping()->ContextMenu, selectSearchTag:@escaping(PeerListState.SelectedSearchTag)->Void, setPeerAsTag:@escaping(Peer?)->Void, toggleContactsSort:@escaping(PeerListState.ContactsSort)->Void) {
         self.context = context
         self.joinGroupCall = joinGroupCall
@@ -1243,6 +1244,7 @@ public class PeerListContainerView : Control {
             foldersItem?.table = self.tableView
             // MARK: NAGRAM
             foldersItem?.nagramOpenShortcut = arguments.nagramOpenShortcut
+            foldersItem?.nagramArchiveUnread = arguments.nagramArchiveUnread
         } else {
             self.foldersItem = nil
         }
@@ -2814,7 +2816,7 @@ open class PeersListController<Context: AccountContextProtocol>: TelegramGeneric
             var lhs = lhs
             lhs.activities = rhs.activities
             return lhs == rhs
-        }), NagramOptions.savedInFolderList.signal, NagramOptions.archiveInFolderList.signal) |> map { state, _, _ in state }
+        }), NagramOptions.savedInFolderList.signal, NagramOptions.archiveInFolderList.signal, .single(NagramArchiveUnread(count: 0, hasUnmutedUnread: false)) |> then(nagramArchiveUnread(engine: context.engine) |> deliverOnMainQueue))
         
         let previousState: Atomic<PeerListState?> = Atomic(value: nil)
         
@@ -3041,7 +3043,9 @@ open class PeersListController<Context: AccountContextProtocol>: TelegramGeneric
             return arguments
         }
         
-        actionsDisposable.add(stateSignal.start(next: { [weak self] state in
+        // MARK: NAGRAM
+        actionsDisposable.add(stateSignal.start(next: { [weak self] state, _, _, archiveUnread in
+            arguments.nagramArchiveUnread = archiveUnread
             CATransaction.begin()
             self?.updateState(state, previous: previousState.swap(state), arguments: arguments)
             CATransaction.commit()

@@ -212,8 +212,10 @@ final class AppSidebarUIEnvironment: SidebarUIEnvironment {
     }
 
     // MARK: NAGRAM
-    func nagramOpenFolderShortcut(_ id: Int32) {
+    func nagramOpenFolderShortcut(_ id: Int32, newWindow: Bool) {
         switch NagramFolderShortcut(rawValue: id) {
+        case .saved where newWindow:
+            accountContext.sharedContext.openPeerInNewWindow(peerId: accountContext.peerId, parent: accountContext)
         case .saved:
             navigateToChat(navigation: accountContext.bindings.rootNavigation(), context: accountContext, chatLocation: .peer(accountContext.peerId))
         case .archive:

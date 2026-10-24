@@ -1671,6 +1671,10 @@ public class ChatListController<Context: AccountContextProtocol> : PeersListCont
     }
     public override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        // MARK: NAGRAM
+        if self.mode.groupId == .archive {
+            NagramArchiveState.isOpen.set(true)
+        }
         
         
         subContext?.load(force: true)
@@ -1963,6 +1967,10 @@ public class ChatListController<Context: AccountContextProtocol> : PeersListCont
     
     public override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
+        // MARK: NAGRAM
+        if self.mode.groupId == .archive {
+            NagramArchiveState.isOpen.set(false)
+        }
         context.window.removeAllHandlers(for: self)
         context.window.removeAllHandlers(for: genericView.tableView)
         

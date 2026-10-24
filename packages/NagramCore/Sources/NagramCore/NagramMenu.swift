@@ -1,4 +1,5 @@
 import Foundation
+import SwiftSignalKit
 
 public enum NagramMenuAction: Int, CaseIterable {
     case reply = 1
@@ -187,4 +188,8 @@ public enum NagramFolderShortcut: Int32, CaseIterable {
     public static var visible: [NagramFolderShortcut] {
         return allCases.filter { $0.option.value }
     }
+}
+
+public enum NagramArchiveState {
+    public static let isOpen = ValuePromise<Bool>(false, ignoreRepeated: true)
 }

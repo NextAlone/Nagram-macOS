@@ -71,7 +71,7 @@ public protocol SidebarUIEnvironment: AnyObject {
     func menuImage(_ image: SidebarMenuImage) -> ((NSColor, ContextMenuItem) -> AppMenuItemImageDrawable)?
     func colorImage(_ color: NSColor, ring: Bool) -> CGImage
     // MARK: NAGRAM
-    func nagramOpenFolderShortcut(_ id: Int32)
+    func nagramOpenFolderShortcut(_ id: Int32, newWindow: Bool)
 }
 
 extension SidebarUIEnvironment {

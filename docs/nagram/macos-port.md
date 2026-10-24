@@ -29,7 +29,7 @@ Done (setting row present and wired):
 - Compose: D01 D02 D03 D04 D05 D06 D07 D08 D09 D11 D12 D14 D15 D16 D17 D18 D19 D20 D21 D22 D23 D26 D27 D28 D31 D32.
 - Message menu: visibility for the upstream items (E01–E14, E28) and E15 E16 E17 E20 E23 E24 E25 E26 E29 (no JSON)
   E19 E27 E30 E31 E32 E34 E35 E36 E38 E39 E40.
-- Media: F01 F02 F03 F04 F05 F06 F07 F08 F09 F12 F14 F15 F17 F18.
+- Media: F01 F02 F03 F04 F05 F06 F07 F08 F09 F12 F13 F14 F15 F17 F18.
 - Privacy: G01 G02 (window capture exclusion, notification and chat-list text) G03 G04 G05 (users) G06 (users) G07 G08 G13 G14 G10 G13 G14 G15 G18 (typing, recording, sticker choice); local names for peers (profile action).
 - Rules: I01 (account rules, outgoing, Zalgo, hidden authors, hidden messages) I11 I12 I13 I14 I15 I16 I17.
 - Translation: H01 (message translation through OpenAI-compatible, Anthropic, DeepL, Google, Microsoft or Yandex
@@ -40,9 +40,15 @@ Messages hidden by a rule or by "hide message" keep their bubble, with the media
 `lng_nagram_filter_hidden`, as in Nagram Desktop; they are not dropped from the history.
 
 B27 and B28 add the Saved Messages and Archive entries to both the sidebar and the top tabs. They open the chat or the
-archive without switching folders, stay out of drag reordering, and their menu has "hide this entry". Not yet done: the
-Archive entry's unread count and highlight while the archive is open, and the "open in new window", "search" and "mark all
-as read" menu items.
+archive without switching folders and stay out of drag reordering. The Archive entry shows the archive's unread chat
+count the way folder badges do (muted chats included, accent when one is unmuted, hidden by B08) and is highlighted in
+the sidebar while the archive list is open. Menus: Saved Messages has "open in new window" and "hide this entry", Archive
+has "mark all as read" and "hide this entry". Not done: "search" for Saved Messages and "open in new window" for the
+archive, which upstream has no entry point for.
+
+F13 checks the file with Nagram Desktop's rules (format, version 1, at most 1,000 unique public names, 1 MB), lists each
+pack as installed or "view pack" (opening the native pack preview), and "apply order" moves the installed packs into the
+file's order while keeping the rest after them.
 
 `G01` uses the macOS-only key `nagram.hideMyPhone` (Nagram Desktop reuses its upstream setting).
 
@@ -53,5 +59,5 @@ Pending, needing upstream core changes (the `submodules/telegram-ios` submodule 
 B23 community grouping, F19 voice bitrate, G18 upload status, I09 Android platform, J05 RPC errors, K01–K06.
 
 Pending, app-side work not yet done: A11 A14 A20, B01 B05 (specific folder) B09 B16 B17 B18 B20 B21 B24 B25 B26 B29, C27,
-D24 D25 D29 D30, E18 E21 E22 E33 E37, F10 F11 F13 F16 F21–F27,
+D24 D25 D29 D30, E18 E21 E22 E33 E37, F10 F11 F16 F21–F27,
 G09 G12 G17 G19–G21, H02 H04 H06–H09 H11, I02 I04–I08, J08–J11.

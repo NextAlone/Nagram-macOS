@@ -1,6 +1,7 @@
 import Cocoa
 import TGUIKit
 import TelegramCore
+import TelegramContext
 import Localization
 import NagramCore
 
@@ -19,8 +20,20 @@ func nagramShortcutFilter(_ shortcut: NagramFolderShortcut) -> ChatListFilter {
     return .filter(id: shortcut.rawValue, title: ChatFolderTitle(text: title, entities: [], enableAnimations: false), emoticon: emoticon, data: data)
 }
 
-func nagramShortcutMenuItems(_ shortcut: NagramFolderShortcut) -> [ContextMenuItem] {
-    return [ContextMenuItem(nagramString("lng_nagram_hide_folder_entry"), handler: {
+func nagramShortcutMenuItems(_ shortcut: NagramFolderShortcut, context: any AccountContextProtocol, environment: SidebarUIEnvironment) -> [ContextMenuItem] {
+    var items: [ContextMenuItem] = []
+    switch shortcut {
+    case .saved:
+        items.append(ContextMenuItem(strings().accountOpenInWindow, handler: {
+            environment.nagramOpenFolderShortcut(shortcut.rawValue, newWindow: true)
+        }))
+    case .archive:
+        items.append(ContextMenuItem(strings().chatListFilterReadAll, handler: {
+            _ = context.engine.messages.markAllChatsAsReadInteractively(items: [(groupId: .archive, filterPredicate: nil)]).start()
+        }, itemImage: environment.menuImage(.menu_folder_read)))
+    }
+    items.append(ContextMenuItem(nagramString("lng_nagram_hide_folder_entry"), handler: {
         shortcut.option.set(false)
-    })]
+    }))
+    return items
 }

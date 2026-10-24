@@ -12,6 +12,7 @@ import GeneralRows
 import StoriesUI
 import InlineStickerLayer
 import NagramCore
+import LocalAnimations
 
 public class ChatListRevealItem: TableStickItem {
     fileprivate let action:((ChatListFilter)->Void)?
@@ -26,6 +27,7 @@ public class ChatListRevealItem: TableStickItem {
     fileprivate let customBackgroundColor: NSColor?
     // MARK: NAGRAM
     var nagramOpenShortcut: ((NagramFolderShortcut) -> Void)?
+    var nagramArchiveUnread: NagramArchiveUnread?
     public init(_ initialSize: NSSize, context: any AccountContextProtocol, tabs: [ChatListFilter], selected: ChatListFilter, counters: ChatListFilterBadges, action: ((ChatListFilter)->Void)? = nil, openSettings: (()->Void)? = nil, menuItems: ((ChatListFilter, Int?, Bool?)->[ContextMenuItem])? = nil, presentation: TelegramPresentationTheme = theme, customBackgroundColor: NSColor? = nil, getCurrentStoriesState:@escaping()->(StoryListChatListRowItem.InterfaceState, NSView)? = { return nil }) {
         self.action = action
         self.context = context
@@ -302,7 +304,9 @@ public final class ChatListRevealView : TableStickView {
         if item.nagramOpenShortcut != nil {
             for shortcut in NagramFolderShortcut.visible {
                 let title = shortcut == .saved ? strings().peerSavedMessages : strings().chatListArchivedChats
-                items.append(ScrollableSegmentItem(title: title, index: index, uniqueId: Int64(shortcut.rawValue), selected: false, insets: insets, icon: nil, theme: segmentTheme, equatable: nil))
+                let unread = shortcut == .archive ? item.nagramArchiveUnread : nil
+                let icon = unread.flatMap { unread in unread.count > 0 ? nagramTabBadge(unread.count, active: unread.hasUnmutedUnread, presentation: item.presentation) : nil }
+                items.append(ScrollableSegmentItem(title: title, index: index, uniqueId: Int64(shortcut.rawValue), selected: false, insets: insets, icon: icon, theme: segmentTheme, equatable: UIEquatable(unread)))
                 index += 1
             }
         }
@@ -347,10 +351,22 @@ public final class ChatListRevealView : TableStickView {
         }
         segmentView.menuItems = { [weak item] selected in
             // MARK: NAGRAM
-            if let shortcut = NagramFolderShortcut(rawValue: Int32(truncatingIfNeeded: selected.uniqueId)) {
-                return .single([ContextMenuItem(nagramString("lng_nagram_hide_folder_entry"), handler: {
+            if let shortcut = NagramFolderShortcut(rawValue: Int32(truncatingIfNeeded: selected.uniqueId)), let context = item?.context {
+                var items: [ContextMenuItem] = []
+                switch shortcut {
+                case .saved:
+                    items.append(ContextMenuItem(strings().accountOpenInWindow, handler: {
+                        ChatListUIHooks.shared.openPeerInNewWindow(context, context.peerId)
+                    }, itemImage: MenuAnimation.menu_open_with.value))
+                case .archive:
+                    items.append(ContextMenuItem(strings().chatListFilterReadAll, handler: {
+                        _ = context.engine.messages.markAllChatsAsReadInteractively(items: [(groupId: .archive, filterPredicate: nil)]).start()
+                    }, itemImage: MenuAnimation.menu_folder_read.value))
+                }
+                items.append(ContextMenuItem(nagramString("lng_nagram_hide_folder_entry"), handler: {
                     shortcut.option.set(false)
-                })])
+                }))
+                return .single(items)
             }
             if let item = item, selected.uniqueId != -1 && selected.uniqueId != -2 {
                 return item.menuItems(for: item.tabs[selected.index], unreadCount: item.counters.count(for: item.tabs[selected.index])?.count)
@@ -400,4 +416,20 @@ public final class ChatListRevealView : TableStickView {
     public required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
+}
+
+// MARK: NAGRAM
+private func nagramTabBadge(_ count: Int, active: Bool, presentation: TelegramPresentationTheme) -> CGImage? {
+    let attributedString = NSAttributedString.initialize(string: "\(count.prettyNumber)", color: presentation.colors.background, font: .medium(.short))
+    let textLayout = TextNode.layoutText(maybeNode: nil, attributedString, nil, 1, .start, NSMakeSize(CGFloat.greatestFiniteMagnitude, CGFloat.greatestFiniteMagnitude), nil, false, .center)
+    var size = NSMakeSize(textLayout.0.size.width + 8, textLayout.0.size.height + 5)
+    size = NSMakeSize(max(size.height, size.width), size.height)
+    return generateImage(size, rotatedContext: { size, ctx in
+        let rect = NSMakeRect(0, 0, size.width, size.height)
+        ctx.clear(rect)
+        ctx.setFillColor(active ? presentation.colors.accent.cgColor : presentation.colors.badgeMuted.cgColor)
+        ctx.round(size, size.height / 2.0)
+        ctx.fill(rect)
+        textLayout.1.draw(rect.focus(textLayout.0.size).offsetBy(dx: 0, dy: -1), in: ctx, backingScaleFactor: 2.0, backgroundColor: .white)
+    })
 }

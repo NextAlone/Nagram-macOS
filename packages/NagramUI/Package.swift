@@ -3,6 +3,7 @@
 import PackageDescription
 
 let deps: [(String, String)] = [
+    ("EntertainmentUI", "../EntertainmentUI"),
     ("AlertsUI", "../AlertsUI"),
     ("ApiCredentials", "../ApiCredentials"),
     ("GeneralRows", "../GeneralRows"),
