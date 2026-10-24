@@ -8,6 +8,7 @@ import TelegramIconsTheme
 import TelegramMediaUtils
 import TelegramTheme
 import TelegramUtils
+import NagramCore
 
 extension TelegramChatColors {
     public func channelViewsIcon(_ item: ChatRowItem) -> CGImage {
@@ -96,7 +97,8 @@ extension TelegramChatColors {
         var hasSecondary: Bool = false
         var hasTertiary: Bool = false
         
-        if let message = item.message, let replyAttr = message.replyAttribute, let replyMessage = message.associatedMessages[replyAttr.messageId], let author = replyMessage.effectiveAuthor {
+        // MARK: NAGRAM
+        if !NagramOptions.themeReplyColors.value, let message = item.message, let replyAttr = message.replyAttribute, let replyMessage = message.associatedMessages[replyAttr.messageId], let author = replyMessage.effectiveAuthor {
             let accept = item.isIncoming || item.renderType == .list
             if let nameColor = author.nameColor {
                 let color = nameColor.nameColors(item.context)
@@ -125,7 +127,8 @@ extension TelegramChatColors {
         } else {
             author = message.effectiveAuthor
         }
-        if let author = author {
+        // MARK: NAGRAM
+        if let author = author, !NagramOptions.themeReplyColors.value {
             if let nameColor = author.nameColor {
                 let color =  nameColor.nameColors(colors)
                 if isIncoming || !bubbled {
@@ -149,6 +152,10 @@ extension TelegramChatColors {
     }
     
     public func replyPattern(_ message: Message?) -> Int64? {
+        // MARK: NAGRAM
+        if NagramOptions.themeReplyColors.value || NagramOptions.simplifiedReplies.value {
+            return nil
+        }
         if let message = message, let replyAttr = message.replyAttribute, let replyMessage = message.associatedMessages[replyAttr.messageId], let author = replyMessage.effectiveAuthor {
             if let name = author.nameColor {
                 switch name {

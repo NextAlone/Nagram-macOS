@@ -170,7 +170,8 @@ public class Sender: NSObject {
         var inset:Int = 0
         let dynamicEmojiOrder = context.stickerSettings.dynamicPackOrder
         
-        var input:ChatTextInputState = input
+        // MARK: NAGRAM
+        var input:ChatTextInputState = input.nagramTransformed(editing: false)
         
         let emojis = Array(input.inputText.fixed.emojiString).map { String($0) }.compactMap {!$0.isEmpty ? $0 : nil}
         if input.attributes.isEmpty {

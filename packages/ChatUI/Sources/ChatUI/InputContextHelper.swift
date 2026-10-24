@@ -22,6 +22,7 @@ import InlineMediaGrid
 import MessageTextUtils
 import ShortPeerRow
 import InlineStickerLayer
+import NagramCore
 
 
 
@@ -825,6 +826,10 @@ public class InputContextViewController : GenericViewController<InputContextView
             var height = getHeight?() ?? floor(superview.frame.height / 2)
             if getHeight == nil, fullWidthInset == nil {
                 height = min(height, max(0, superview.frame.height - 50 - relativeView.frame.height))
+            }
+            // MARK: NAGRAM
+            if NagramOptions.tallMentionList.value, !(genericView.tableView.firstItem is ContextClueRowItem) {
+                height = min(superview.frame.height - 50 - relativeView.frame.height, max(height, floor(superview.frame.height * 0.7)))
             }
             if fullWidthInset != nil {
                 let availableHeight = max(0, (genericView.position == .above ? relativeRect.minY : superview.bounds.maxY - relativeRect.maxY) - 10)

@@ -113,7 +113,42 @@ public func normalizeURLScheme(_ url: NSString) -> NSString {
     return (lowered + string[colon...]) as NSString
 }
 
+// MARK: NAGRAM
+private func parseNagramSettingsLink(_ url: String) -> ParsedInAppLink? {
+    var rest: Substring
+    let lowered = url.lowercased()
+    if lowered.hasPrefix("tg://nasettings") {
+        rest = url.dropFirst("tg://nasettings".count)
+    } else if let range = lowered.range(of: "t.me/nasettings"), lowered.hasPrefix("https://") || lowered.hasPrefix("http://") || lowered.hasPrefix("t.me/") {
+        rest = url[range.upperBound...]
+    } else {
+        return nil
+    }
+    guard rest.isEmpty || rest.hasPrefix("/") || rest.hasPrefix("?") else {
+        return nil
+    }
+    var section: String?
+    var row: String?
+    let parts = rest.split(separator: "?", maxSplits: 1, omittingEmptySubsequences: false)
+    let path = parts.first.map(String.init)?.trimmingCharacters(in: CharacterSet(charactersIn: "/")) ?? ""
+    if !path.isEmpty {
+        section = path
+    }
+    if parts.count > 1 {
+        for item in parts[1].split(separator: "&") {
+            let pair = item.split(separator: "=", maxSplits: 1).map(String.init)
+            if pair.count == 2, pair[0] == "r" || pair[0] == "row" {
+                row = pair[1].removingPercentEncoding ?? pair[1]
+            }
+        }
+    }
+    return .nagramSettings(link: url, section: section, row: row)
+}
+
 public func parseInAppLink(_ url: NSString, options: InAppLinkParsingOptions = InAppLinkParsingOptions()) -> ParsedInAppLink {
+    if let nagram = parseNagramSettingsLink(url as String) {
+        return nagram
+    }
     let peerId = options.peerId
     let messageId = options.messageId
     let confirm = options.confirm

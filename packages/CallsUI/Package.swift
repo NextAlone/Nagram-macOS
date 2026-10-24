@@ -3,6 +3,7 @@
 import PackageDescription
 
 let deps: [(String, String)] = [
+    ("NagramCore", "../NagramCore"),
 
     ("TGUIKit", "../TGUIKit"),
     ("ColorPalette", "../ColorPalette"),

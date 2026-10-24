@@ -1,6 +1,7 @@
 import Cocoa
 import SwiftSignalKit
 import KeyboardKey
+import NagramCore
 
 public class AppWindow : Window {
 
@@ -1099,6 +1100,10 @@ open class Window: NSWindow {
 
     public override init(contentRect: NSRect, styleMask style: NSWindow.StyleMask, backing bufferingType: NSWindow.BackingStoreType, defer flag: Bool) {
         super.init(contentRect: contentRect, styleMask: style, backing: bufferingType, defer: flag)
+        // MARK: NAGRAM
+        if NagramOptions.demoMode.value {
+            self.sharingType = .none
+        }
         
         
         

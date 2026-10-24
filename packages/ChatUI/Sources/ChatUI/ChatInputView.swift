@@ -26,6 +26,7 @@ import GeneralRows
 import InputTextView
 import PremiumUI
 import InlineStickerLayer
+import NagramCore
 
 public protocol ChatInputDelegate : AnyObject {
     func inputChanged(height:CGFloat, animated:Bool);
@@ -132,9 +133,11 @@ public final class ChatInputContainerView: FlippableView {
         self.chatInteraction = chatInteraction
         self.accessory = ChatInputAccessory(chatInteraction: chatInteraction)
         self.contentView = FlippableView(frame: NSMakeRect(0, 0, NSWidth(frameRect), NSHeight(frameRect)))
-        let attachWidth: CGFloat = chatInteraction.mode.customChatLink != nil ? 20 : 40
+        // MARK: NAGRAM
+        let nagramHideAttach = NagramOptions.hideAttachButton.value && chatInteraction.mode.customChatLink == nil
+        let attachWidth: CGFloat = nagramHideAttach ? 0 : (chatInteraction.mode.customChatLink != nil ? 20 : 40)
         self.attachView = ChatInputAttachButton(frame: NSMakeRect(0, 0, attachWidth, 40), chatInteraction: chatInteraction)
-        self.attachView.isHidden = chatInteraction.mode.customChatLink != nil
+        self.attachView.isHidden = chatInteraction.mode.customChatLink != nil || nagramHideAttach
         self.actionsView = ChatInputActionsView(frame: NSMakeRect(0, 0, 60, contentView.frame.height), chatInteraction: chatInteraction)
         self.sendButton = ChatInputSendButton(frame: NSMakeRect(0, 0, 40, 40), chatInteraction: chatInteraction)
         self.textFieldContainer = View(frame: NSMakeRect(0, 0, 100, contentView.frame.height))
@@ -369,8 +372,10 @@ public final class ChatInputContainerView: FlippableView {
 
         // The AI (rephrase) button lives in the attach view and appears once the input has grown to 4+
         // lines; the attach view then expands into a vertical pill to hold it (glass ghost follows).
+        // MARK: NAGRAM
         let showAi = (chatInteraction.presentation.state == .normal || chatInteraction.presentation.state == .editing)
             && (chatInteraction.presentation.interfaceState.editState?.loadingState ?? EditStateLoading.none) == EditStateLoading.none
+            && !NagramOptions.hideAiButton.value
             && chatInteraction.presentation.peer?.isSecretChat != true
             && textView.numberOfLines(for: textSize.width) >= 4
 
@@ -386,7 +391,8 @@ public final class ChatInputContainerView: FlippableView {
         transition.updateFrame(view: attachView, frame: attachFrame)
         attachView.setAI(visible: showAi, transition: transition)
 
-        let containerX = attachView.frame.maxX + gap
+        // MARK: NAGRAM
+        let containerX = attachView.frame.width == 0 ? attachView.frame.maxX : attachView.frame.maxX + gap
         let rightX = size.width - edge - sendWidth
         let sendSlot = self.sendSlot(gap: gap)
         let containerWidth = size.width - edge - sendSlot.outside - containerX
@@ -608,6 +614,16 @@ public final class ChatInputContainerView: FlippableView {
         start(textGhost, slots.text)
         start(voiceGhost, slots.voice)
         start(botMenuView != nil ? botMenuGhost : nil, slots.attach ?? slots.text)
+    }
+}
+
+// MARK: NAGRAM
+private func nagramHidesBotMenu(_ menu: ChatPresentationInterfaceState.BotMenu) -> Bool {
+    switch menu.menuButton {
+    case .commands:
+        return NagramOptions.hideBotCommandButton.value
+    case .webView:
+        return NagramOptions.hideBotMenu.value
     }
 }
 
@@ -1148,6 +1164,20 @@ public class ChatInputView: View, Notifable {
                 return placeholder
             }
         }
+        // MARK: NAGRAM
+        switch NagramOptions.inputPlaceholderMode.value {
+        case 1:
+            return nagramString("lng_nagram_input_chat_hint", ["name": peer.id == chatInteraction.interactionContext.peerId ? strings().peerSavedMessages : peer.displayTitle])
+        case 2:
+            if let id = chatInteraction.presentation.currentSendAsPeerId, let sendAs = chatInteraction.presentation.sendAsPeers?.first(where: { $0.peer.id == id }) {
+                return nagramString("lng_nagram_input_sender_hint", ["name": sendAs.peer._asPeer().displayTitle])
+            }
+            if let accountPeer = chatInteraction.presentation.accountPeer {
+                return nagramString("lng_nagram_input_sender_hint", ["name": accountPeer.displayTitle])
+            }
+        default:
+            break
+        }
         if let peer = chatInteraction.presentation.peer {
             if let peer = peer as? TelegramChannel {
                 if peer.hasPermission(.canBeAnonymous) {
@@ -1624,7 +1654,8 @@ public class ChatInputView: View, Notifable {
         textFieldContainer.isHidden = false
         sendButton.isHidden = false
         if chatInteraction.mode.customChatLink == nil {
-            attachView.isHidden = false
+            // MARK: NAGRAM
+            attachView.isHidden = attachView.frame.width == 0
         }
 
         // Recording panel — lazy create / reuse across same-kind transitions,
@@ -1819,7 +1850,8 @@ public class ChatInputView: View, Notifable {
         if chatInteraction.interactionContext.peerId != chatInteraction.peerId, let peer = chatInteraction.presentation.peer, !peer.isChannel && !markNextTextChangeToFalseActivity {
             sendActivityDisposable.set((Signal<Bool, NoError>.single(!state.effectiveInput.inputText.isEmpty) |> then(Signal<Bool, NoError>.single(false) |> delay(4.0, queue: Queue.mainQueue()))).start(next: { [weak self] isPresent in
                 if let chatInteraction = self?.chatInteraction, let peer = chatInteraction.presentation.peer, !peer.isChannel && chatInteraction.presentation.state != .editing {
-                    if self?.chatInteraction.peerIsAccountPeer == true {
+                    // MARK: NAGRAM
+                    if self?.chatInteraction.peerIsAccountPeer == true, !NagramOptions.hideSendStatus.value || !isPresent {
                         chatInteraction.interactionContext.account.updateLocalInputActivity(peerId: .init(peerId: peer.id, category: chatInteraction.mode.activityCategory(chatInteraction.chatLocation.threadId)), activity: .typingText, isPresent: isPresent)
                     }
                 }
@@ -1860,7 +1892,8 @@ public class ChatInputView: View, Notifable {
     
     public func updateAttachments(_ inputState:ChatPresentationInterfaceState, _ animated:Bool = true) -> Void {
         var updated: Bool = false
-        if let botMenu = inputState.botMenu, !botMenu.isEmpty {
+        // MARK: NAGRAM
+        if let botMenu = inputState.botMenu, !botMenu.isEmpty, !nagramHidesBotMenu(botMenu) {
             let current: ChatInputMenuView
             if let view = self.botMenuView {
                 current = view
@@ -1889,8 +1922,9 @@ public class ChatInputView: View, Notifable {
         }
         var anim = animated
         var appearingSendAs: ChatInputSendAsView?
-        let hasSendAs = inputState.sendAsPeers?.isEmpty == false
-        if let sendAsPeers = inputState.sendAsPeers, !sendAsPeers.isEmpty && inputState.state == .normal {
+        // MARK: NAGRAM
+        let hasSendAs = inputState.sendAsPeers?.isEmpty == false && !NagramOptions.hideSendAsButton.value
+        if let sendAsPeers = inputState.sendAsPeers, !sendAsPeers.isEmpty && inputState.state == .normal && !NagramOptions.hideSendAsButton.value {
             let current: ChatInputSendAsView
             if let view = self.sendAsView {
                 current = view

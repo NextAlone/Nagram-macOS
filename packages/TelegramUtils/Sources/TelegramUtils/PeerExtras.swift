@@ -1,6 +1,7 @@
 import Foundation
 import TelegramCore
 import Postbox
+import NagramCore
 
 public func uniquePeers(from peers:[Peer], defaultExculde:[PeerId] = []) -> [Peer] {
     var excludePeerIds:[PeerId:PeerId] = [:]
@@ -32,6 +33,10 @@ public extension Peer {
         return isCopyProtected(cachedData: nil)
     }
     func isCopyProtected(cachedData: CachedPeerData?) -> Bool {
+        // MARK: NAGRAM
+        if NagramOptions.forceCopy.value {
+            return false
+        }
         if let peer = self as? TelegramGroup {
             return peer.flags.contains(.copyProtectionEnabled) && !peer.groupAccess.isCreator
         } else if let peer = self as? TelegramChannel {

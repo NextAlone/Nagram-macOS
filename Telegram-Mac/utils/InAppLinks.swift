@@ -12,6 +12,8 @@ import InputView
 import TelegramMedia
 import InAppSettings
 import WalletContext
+import NagramCore
+import NagramUI
 
 
 
@@ -922,7 +924,8 @@ func execute(inapp:inAppLink, window: Window? = nil, isExternal: Bool = false, a
                     }
                 }
 
-                if let withToken = appDelegate?.tryApplyAutologinToken(url.absoluteString), let url = URL(string: withToken) {
+                // MARK: NAGRAM
+                if !NagramOptions.disableOfficialAutoLogin.value, let withToken = appDelegate?.tryApplyAutologinToken(url.absoluteString), let url = URL(string: withToken) {
                     NSWorkspace.shared.open(url)
                     afterComplete(true)
                     return
@@ -1532,6 +1535,11 @@ func execute(inapp:inAppLink, window: Window? = nil, isExternal: Bool = false, a
         }
         afterComplete(true)
     case .instantView:
+        afterComplete(true)
+    case let .nagramSettings(_, context, section, row):
+        if !NagramOpenSettingsLink(context: context, sectionId: section, row: row) {
+            showModalText(for: context.window, text: nagramString("lng_nagram_settings_link_unsupported"))
+        }
         afterComplete(true)
     case let .settings(_, context, section):
         let controller: ViewController
@@ -2231,6 +2239,8 @@ enum inAppLink {
     case joinGroupCall(link: String, context: AccountContext, peerId: PeerId, call: CachedChannelData.ActiveCall)
     case invoice(link: String, context: AccountContext, slug: String)
     case premiumOffer(link: String, ref: String?, context: AccountContext)
+    // MARK: NAGRAM
+    case nagramSettings(link: String, context: AccountContext, section: String?, row: String?)
     case restorePurchase(link: String, context: AccountContext)
     case urlAuth(link: String, context: AccountContext)
     case loginCode(link: String, code: String)
@@ -2302,6 +2312,8 @@ enum inAppLink {
         case let .invoice(link, _, _):
             return link
         case let .premiumOffer(link, _, _):
+            return link
+        case let .nagramSettings(link, _, _, _):
             return link
         case let .restorePurchase(link, _):
             return link
@@ -2447,6 +2459,9 @@ func inApp(for url:NSString, context: AccountContext? = nil, peerId:PeerId? = ni
     case let .invoice(link, slug):
         guard let context else { return .nothing }
         return .invoice(link: link, context: context, slug: slug)
+    case let .nagramSettings(link, section, row):
+        guard let context else { return .nothing }
+        return .nagramSettings(link: link, context: context, section: section, row: row)
     case let .premiumOffer(link, ref):
         guard let context else { return .nothing }
         return .premiumOffer(link: link, ref: ref, context: context)

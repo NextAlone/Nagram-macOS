@@ -113,6 +113,9 @@ public struct SettingsNavigationHooks {
     public var makeBusinessLocationController: (any AccountContextProtocol) -> ViewController = { _ in ViewController() }
     public var makeBusinessChatbotController: (any AccountContextProtocol) -> ViewController = { _ in ViewController() }
     public var makePasscodeSettingsController: (any AccountContextProtocol) -> ViewController = { _ in ViewController() }
+    // MARK: NAGRAM
+    public var makeNagramController: (any AccountContextProtocol) -> ViewController = { _ in ViewController() }
+    public var nagramTitle: () -> String = { "Nagram" }
     public var makeInstalledStickerPacksController: (any AccountContextProtocol, SettingsStickersTag?) -> ViewController = { _, _ in ViewController() }
     public var makeFeaturedStickerPacksController: (any AccountContextProtocol) -> ViewController = { _ in ViewController() }
     public var makeArchivedStickerPacksController: (any AccountContextProtocol) -> ViewController = { _ in ViewController() }

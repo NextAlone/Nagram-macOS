@@ -11,6 +11,7 @@ import TelegramUtils
 import GeneralRows
 import StoriesUI
 import InlineStickerLayer
+import NagramCore
 
 public class ChatListRevealItem: TableStickItem {
     fileprivate let action:((ChatListFilter)->Void)?
@@ -221,7 +222,8 @@ public final class ChatListRevealView : TableStickView {
         }
         
         let generateIcon:(ChatListFilter?)->CGImage? = { tab in
-            let unreadCount:ChatListFilterBadge? = item.counters.count(for: tab)
+            // MARK: NAGRAM
+            let unreadCount:ChatListFilterBadge? = NagramOptions.hideFolderUnreadCounters.value ? nil : item.counters.count(for: tab)
             let icon: CGImage?
             if let unreadCount = unreadCount, unreadCount.count > 0 {
                 let attributedString = NSAttributedString.initialize(string: "\(unreadCount.count.prettyNumber)", color: item.presentation.colors.background, font: .medium(.short))

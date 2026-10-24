@@ -11,6 +11,7 @@ import Postbox
 import SwiftSignalKit
 import TelegramCore
 import InAppSettings
+import NagramCore
 
 private func readAllInFilter(_ filter: ChatListFilter?, context: any AccountContextProtocol, environment: SidebarUIEnvironment) {
     let _ = (environment.filterPredicates
@@ -201,7 +202,8 @@ func leftSidebarEntries(_ filterData: SidebarState, badgeForFilter: (ChatListFil
     entries.append(.topOffset)
 
     for filter in filterData.tabs {
-        let badge = badgeForFilter(filter)
+        // MARK: NAGRAM
+        let badge = NagramOptions.hideFolderUnreadCounters.value ? nil : badgeForFilter(filter)
         entries.append(.folder(index: index, selected: filter.sidebarId == filterData.selectedFilterId, filter: filter, unreadCount: badge?.count ?? 0, hasUnmutedUnread: badge?.hasUnmutedUnread ?? false))
         index += 1
     }

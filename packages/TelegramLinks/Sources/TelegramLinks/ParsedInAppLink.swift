@@ -55,6 +55,8 @@ public enum ParsedInAppLink {
     case settings(link: String, section: InAppSettingsSection)
     case invoice(link: String, slug: String)
     case premiumOffer(link: String, ref: String?)
+    // MARK: NAGRAM
+    case nagramSettings(link: String, section: String?, row: String?)
     case restorePurchase(link: String)
     case urlAuth(link: String)
     case loginCode(link: String, code: String)

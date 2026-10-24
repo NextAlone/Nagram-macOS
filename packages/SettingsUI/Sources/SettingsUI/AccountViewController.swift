@@ -148,6 +148,8 @@ private enum AccountInfoEntry<Context: AccountContextProtocol> : TableItemListNo
     case stories(index: Int, viewType: GeneralViewType)
     case attach(index: Int, AttachMenuBot, viewType: GeneralViewType)
     case general(index: Int, viewType: GeneralViewType)
+    // MARK: NAGRAM
+    case nagram(index: Int, viewType: GeneralViewType)
     case stickers(index: Int, viewType: GeneralViewType)
     case notifications(index: Int, viewType: GeneralViewType, status: NotificationAuthorizationStatus)
     case language(index: Int, viewType: GeneralViewType, current: String)
@@ -190,6 +192,8 @@ private enum AccountInfoEntry<Context: AccountContextProtocol> : TableItemListNo
             return .index(6)
         case .general:
             return .index(7)
+        case .nagram:
+            return .index(2000)
         case .proxy:
             return .index(8)
         case .notifications:
@@ -258,6 +262,8 @@ private enum AccountInfoEntry<Context: AccountContextProtocol> : TableItemListNo
         case let .attach(index, _, _):
             return index
         case let  .general(index, _):
+            return index
+        case let .nagram(index, _):
             return index
         case let  .proxy(index, _, _):
             return index
@@ -360,6 +366,10 @@ private enum AccountInfoEntry<Context: AccountContextProtocol> : TableItemListNo
             return GeneralInteractedRowItem(initialSize, stableId: stableId, name: strings().accountSettingsAddAccount, nameStyle: ControlStyle(font: .normal(.title), foregroundColor: theme.colors.accentIcon), type: .none, viewType: viewType, action: {
                 arguments.addAccount(accounts)
             }, thumb: GeneralThumbAdditional(thumb: theme.icons.account_add_account, textInset: 35, thumbInset: 0), inset:NSEdgeInsets(left: 12, right: 12), customTheme: .initialize(theme, background: .clear))
+        case let .nagram(_, viewType):
+            return GeneralInteractedRowItem(initialSize, stableId: stableId, name: SettingsNavigationHooks.shared.nagramTitle(), icon: theme.icons.settingsGeneral, activeIcon: theme.icons.settingsGeneralActive, type: .next, viewType: viewType, action: {
+                arguments.presentController(SettingsNavigationHooks.shared.makeNagramController(arguments.context), true)
+            }, inset:NSEdgeInsets(left: 12, right: 12), customTheme: .initialize(theme, background: .clear))
         case let .general(_, viewType):
             return GeneralInteractedRowItem(initialSize, stableId: stableId, name: strings().accountSettingsGeneral, icon: theme.icons.settingsGeneral, activeIcon: theme.icons.settingsGeneralActive, type: .next, viewType: viewType, action: {
                 arguments.presentController(GeneralSettingsViewController(arguments.context), true)
@@ -650,6 +660,12 @@ private func accountInfoEntries<Context: AccountContextProtocol>(peerView:PeerVi
     entries.append(.whiteSpace(index: index, height: 10))
     index += 1
     
+    // MARK: NAGRAM
+    entries.append(.nagram(index: index, viewType: .singleItem))
+    index += 1
+    entries.append(.whiteSpace(index: index, height: 10))
+    index += 1
+
     entries.append(.general(index: index, viewType: .singleItem))
     index += 1
     entries.append(.notifications(index: index, viewType: .singleItem, status: unAuthStatus))

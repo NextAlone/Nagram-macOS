@@ -24,6 +24,7 @@ import TelegramContext
 import TelegramTheme
 import TelegramUtils
 import InlineStickerLayer
+import NagramCore
 
 private func profileButtonColor(over background: NSColor, isDark: Bool) -> NSColor {
     let base = background.usingColorSpace(.sRGB) ?? background
@@ -150,6 +151,22 @@ private func actionItems<Context: AccountContextProtocol>(item: PeerInfoHeadItem
                         } else {
                             PeerInfoUIHooks.shared.showDisableSharingModal(arguments.context, peer.id, arguments.toggleCopyProtection)
                         }
+                    }
+                }))
+            }
+            // MARK: NAGRAM
+            if peer.id != item.context.peerId {
+                items.append(ActionItem(text: nagramString("lng_nagram_peer_alias"), color: item.accentColor, image: theme.icons.profile_edit_photo, animation: .menu_edit, action: {
+                    let alert = NSAlert()
+                    alert.messageText = nagramString("lng_nagram_peer_alias")
+                    let field = NSTextField(frame: NSMakeRect(0, 0, 260, 24))
+                    field.stringValue = NagramAliases.alias(peerId: peer.id.toInt64()) ?? ""
+                    field.placeholderString = peer.displayTitle
+                    alert.accessoryView = field
+                    alert.addButton(withTitle: nagramString("lng_nagram_text_save"))
+                    alert.addButton(withTitle: strings().alertCancel)
+                    if alert.runModal() == .alertFirstButtonReturn {
+                        NagramAliases.setAlias(field.stringValue, peerId: peer.id.toInt64())
                     }
                 }))
             }

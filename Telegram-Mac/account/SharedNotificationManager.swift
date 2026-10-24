@@ -8,6 +8,7 @@ import ObjcUtils
 import InAppSettings
 import PasscodeCore
 import WalletContext
+import NagramCore
 
 func getNotificationMessageId(userInfo:[AnyHashable: Any], for prefix: String) -> MessageId? {
     if let msgId = userInfo["\(prefix).message.id"] as? Int32, let msgNamespace = userInfo["\(prefix).message.namespace"] as? Int32, let namespace = userInfo["\(prefix).peer.namespace"] as? Int32, let id = userInfo["\(prefix).peer.id"] as? Int64 {
@@ -126,6 +127,18 @@ final class SharedNotificationBindings {
     }
 }
 
+
+// MARK: NAGRAM
+private func nagramKeywordMatches(_ alerts: NagramKeywordAlerts, _ message: Message, _ accountPeerId: PeerId) -> Bool {
+    guard alerts.enabled, message.author?.id != accountPeerId, message.flags.contains(.Incoming) else {
+        return false
+    }
+    if message.media.contains(where: { $0 is TelegramMediaAction }) {
+        return false
+    }
+    let isChannel = message.peers[message.id.peerId]?.isChannel ?? false
+    return alerts.matches(message.text, isChannel: isChannel)
+}
 
 final class SharedNotificationManager : NSObject, NSUserNotificationCenterDelegate {
 
@@ -500,9 +513,11 @@ final class SharedNotificationManager : NSObject, NSUserNotificationCenterDelega
             return appNotificationSettings(accountManager: self.accountManager) |> take(1) |> mapToSignal { inAppSettings -> Signal<([Source], InAppNotificationSettings), NoError> in
                 if inAppSettings.enabled && inAppSettings.muteUntil < Int32(Date().timeIntervalSince1970) {
                     
+                    // MARK: NAGRAM
+                    let keywords = NagramKeywordAlerts.current(account: account.peerId.toInt64())
                     let msgs:[Source] = messages.filter
                     {
-                        $0.2 || ($0.0.isEmpty || $0.0[0].wasScheduled)
+                        $0.2 || ($0.0.isEmpty || $0.0[0].wasScheduled) || $0.0.contains(where: { nagramKeywordMatches(keywords, $0, account.peerId) })
                     }.map {
                         return .messages($0.0, $0.1, $0.3)
                     }
@@ -516,6 +531,14 @@ final class SharedNotificationManager : NSObject, NSUserNotificationCenterDelega
                 }
                 
             }
+        }
+        // MARK: NAGRAM
+        |> mapToSignal { sources, inAppSettings -> Signal<([Source], InAppNotificationSettings), NoError> in
+            let delay = Double(NagramOptions.notificationDelay.value) / 1000.0
+            if delay > 0 {
+                return .single((sources, inAppSettings)) |> SwiftSignalKit.delay(delay, queue: .concurrentDefaultQueue())
+            }
+            return .single((sources, inAppSettings))
         }
         |> mapToSignal { sources, inAppSettings -> Signal<([Source],[MessageId:NSImage], InAppNotificationSettings), NoError> in
                 
@@ -608,15 +631,30 @@ final class SharedNotificationManager : NSObject, NSUserNotificationCenterDelega
                             continue
                         }
                         let presentation = presentations[source.key(for: message)] ?? NotificationPresentation(muted: false, sound: .default, showPreview: true, hideSender: false)
+                        // MARK: NAGRAM
+                        var keywordMatch = false
+                        if case .messages = source {
+                            keywordMatch = nagramKeywordMatches(NagramKeywordAlerts.current(account: account.peerId.toInt64()), message, account.peerId)
+                        }
                         if presentation.muted {
-                            if message.consumableMention == nil {
+                            if message.consumableMention == nil && !keywordMatch {
                                 continue
                             }
                         }
                         if let thread = source.threadData, thread.notificationSettings.isMuted {
-                            if message.consumableMention == nil {
+                            if message.consumableMention == nil && !keywordMatch {
                                 continue
                             }
+                        }
+                        let isMessage: Bool
+                        if case .messages = source {
+                            isMessage = true
+                        } else {
+                            isMessage = false
+                        }
+                        let isContact = (message.peers[message.id.peerId] as? TelegramUser)?.flags.contains(.mutualContact) ?? false
+                        if NagramQuietHours.current.silences(.init(message: isMessage, contact: isContact && message.id.peerId.namespace == Namespaces.Peer.CloudUser, mention: message.consumableMention != nil, keyword: keywordMatch)) {
+                            continue
                         }
                         
                         if message.author?.id != account.peerId || message.wasScheduled {
@@ -713,7 +751,11 @@ final class SharedNotificationManager : NSObject, NSUserNotificationCenterDelega
                                     subText = nil
                                 }
                             case .messages:
-                                if !inAppSettings.displayPreviews || !presentation.showPreview || message.peers[message.id.peerId] is TelegramSecretChat || screenIsLocked {
+                                // MARK: NAGRAM
+                                if NagramOptions.demoMode.value {
+                                    title = appName
+                                }
+                                if !inAppSettings.displayPreviews || !presentation.showPreview || message.peers[message.id.peerId] is TelegramSecretChat || screenIsLocked || NagramOptions.demoMode.value {
                                     text = strings().notificationLockedPreview
                                     subText = nil
                                 }

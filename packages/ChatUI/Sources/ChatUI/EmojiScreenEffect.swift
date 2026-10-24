@@ -13,6 +13,7 @@ import TelegramContext
 import Strings
 import TelegramMediaUtils
 import TelegramTheme
+import NagramCore
 
 public final class EmojiScreenEffect {
     fileprivate let context: any AccountContextProtocol
@@ -169,7 +170,8 @@ public final class EmojiScreenEffect {
     
     func addAnimation(_ emoji: String, index: Int?, mirror: Bool, isIncoming: Bool, messageId: MessageId, animationSize: NSSize, viewFrame: NSRect, for parentView: NSView) {
         
-        if context.isLite(.emoji_effects) {
+        // MARK: NAGRAM
+        if context.isLite(.emoji_effects) || NagramOptions.disableEmojiInteractions.value {
             return
         }
         

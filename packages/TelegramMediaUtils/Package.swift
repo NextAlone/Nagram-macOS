@@ -10,6 +10,7 @@ let package = Package(
     ],
     dependencies: [
         .package(name: "SSignalKit", path: "../../submodules/telegram-ios/submodules/SSignalKit"),
+        .package(name: "NagramCore", path: "../NagramCore"),
         .package(name: "TelegramCore", path: "../../submodules/telegram-ios/submodules/TelegramCore"),
         .package(name: "Postbox", path: "../../submodules/telegram-ios/submodules/Postbox"),
         .package(name: "TelegramMediaPlayer", path: "../../submodules/telegram-ios/submodules/MediaPlayer"),
@@ -42,6 +43,7 @@ let package = Package(
             dependencies: [
                 .product(name: "TGUIKit", package: "TGUIKit", condition: nil),
                 .product(name: "SwiftSignalKit", package: "SSignalKit", condition: nil),
+    .product(name: "NagramCore", package: "NagramCore", condition: nil),
                 .product(name: "TelegramCore", package: "TelegramCore", condition: nil),
                 .product(name: "Postbox", package: "Postbox", condition: nil),
                 .product(name: "TelegramMediaPlayer", package: "TelegramMediaPlayer", condition: nil),

@@ -16,6 +16,7 @@ let package = Package(
         // Dependencies declare other packages that this package depends on.
         // .package(url: /* package url */, from: "1.0.0"),
         .package(name: "SSignalKit", path: "../../submodules/telegram-ios/submodules/SSignalKit"),
+        .package(name: "NagramCore", path: "../NagramCore"),
         .package(name: "Postbox", path: "../../submodules/telegram-ios/submodules/Postbox"),
         .package(name: "TelegramCore", path: "../../submodules/telegram-ios/submodules/TelegramCore"),
         .package(name: "KeyboardKey", path: "../KeyboardKey"),
@@ -29,6 +30,7 @@ let package = Package(
         .target(
             name: "InAppSettings",
             dependencies: [.product(name: "SwiftSignalKit", package: "SSignalKit", condition: nil),
+    .product(name: "NagramCore", package: "NagramCore", condition: nil),
                            .product(name: "Postbox", package: "Postbox", condition: nil),
                            .product(name: "KeyboardKey", package: "KeyboardKey", condition: nil),
                            .product(name: "Strings", package: "Strings", condition: nil),

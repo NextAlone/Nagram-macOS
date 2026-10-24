@@ -24,6 +24,7 @@ import TelegramMediaUtils
 import TelegramTheme
 import TelegramUtils
 import InlineStickerLayer
+import NagramCore
 
 private let forwardKeyString = ":##"
 
@@ -1027,6 +1028,10 @@ public class ChatRowItem: TableRowItem {
         guard let message = message else {
             return false
         }
+        // MARK: NAGRAM
+        if NagramOptions.hideQuickShare.value {
+            return false
+        }
         if isSharable {
             if message.isScheduledMessage || message.flags.contains(.Sending) || message.flags.contains(.Failed) || message.flags.contains(.Unsent) {
                 return false
@@ -1231,6 +1236,10 @@ public class ChatRowItem: TableRowItem {
     }
     
     public var isEditMarkVisible: Bool {
+        // MARK: NAGRAM
+        if NagramOptions.hideEditedBadge.value {
+            return false
+        }
         var peers:[Peer] = []
         if let peer = peer {
             peers.append(peer)
@@ -1803,6 +1812,21 @@ public class ChatRowItem: TableRowItem {
             if chatInteraction.isPeerSavedMessages {
                 return nil
             }
+            // MARK: NAGRAM
+            if NagramOptions.hideReactions.value {
+                return nil
+            }
+            if let peer = chatInteraction.peer {
+                if peer.isUser || peer.isBot || peer.isSecretChat, NagramOptions.hidePrivateReactions.value {
+                    return nil
+                }
+                if peer.isGroup || peer.isSupergroup, NagramOptions.hideGroupReactions.value {
+                    return nil
+                }
+                if peer.isChannel, NagramOptions.hideChannelReactions.value {
+                    return nil
+                }
+            }
             if unsupported {
                 return nil
             }
@@ -2114,7 +2138,8 @@ public class ChatRowItem: TableRowItem {
                 }
             }
             
-            if let peer = peer, peer.isChannel {
+            // MARK: NAGRAM
+            if let peer = peer, peer.isChannel, !NagramOptions.hideChannelSignature.value {
                 for attr in message.attributes {
                     if let attr = attr as? AuthorSignatureMessageAttribute {
                         if !message.flags.contains(.Failed) {
@@ -2141,7 +2166,7 @@ public class ChatRowItem: TableRowItem {
                     }
                 }
             }
-            if postAuthor == nil, ChatRowItem.authorIsChannel(message: message, account: context.account) {
+            if postAuthor == nil, !NagramOptions.hideChannelSignature.value, ChatRowItem.authorIsChannel(message: message, account: context.account) {
                 if let author = message.forwardInfo?.authorSignature {
                     let attr: NSAttributedString = .initialize(string: author, color: isStateOverlayLayout ? stateOverlayTextColor : !hasBubble ? presentation.colors.grayText : presentation.chat.grayText(isIncoming, object.renderType == .bubble), font: renderType == .bubble ? .normal(.small) : .normal(.short))
                     postAuthor = TextViewLayout(attr, maximumNumberOfLines: 1)
@@ -2543,7 +2568,8 @@ public class ChatRowItem: TableRowItem {
                 guestChatBadge = layout
             }
             
-            let dateFormatter = DateSelectorUtil.chatDateFormatter
+            // MARK: NAGRAM
+            let dateFormatter = NagramOptions.secondsInMessages.value ? DateSelectorUtil.chatDateFormatterWithSeconds : DateSelectorUtil.chatDateFormatter
             let dateColor = isStateOverlayLayout ? stateOverlayTextColor : (!hasBubble ? theme.colors.grayText : theme.chat.grayText(isIncoming, object.renderType == .bubble))
             
             let dateFont: NSFont = renderType == .bubble ? .normal(.small) : .normal(.short)
@@ -2561,11 +2587,16 @@ public class ChatRowItem: TableRowItem {
                 self.date?.measure(width: .greatestFiniteMagnitude)
 
             } else  if message.timestamp != scheduleWhenOnlineTimestamp && message.adAttribute == nil, chatInteraction.mode.customChatContents == nil, (message.editedTime == nil || !message_primary_edited_date) {
-                var time:TimeInterval = TimeInterval(message.timestamp)
+                // MARK: NAGRAM
+                var time:TimeInterval = TimeInterval(NagramOptions.showForwardedMessageDate.value ? (message.forwardInfo?.date ?? message.timestamp) : message.timestamp)
                 time -= context.timeDifference
                 
                 
                 let attr: NSMutableAttributedString = NSAttributedString.initialize(string: dateFormatter.string(from: Date(timeIntervalSince1970: TimeInterval(time))), color: dateColor, font: dateFont).mutableCopy() as! NSMutableAttributedString
+                // MARK: NAGRAM
+                if NagramOptions.messageIdPlace.value == 2, message.id.namespace == Namespaces.Message.Cloud {
+                    _ = attr.append(string: " | \(message.id.id)", color: dateColor, font: dateFont)
+                }
                 
                 if let attribute = message.inlineBotAttribute, let peerId = attribute.peerId, let peer = message.peers[peerId] {
                     attr.insert(.initialize(string: "\(attribute.title ?? peer.displayTitle), ", color: dateColor, font: dateFont), at: 0)
@@ -2642,7 +2673,7 @@ public class ChatRowItem: TableRowItem {
                 for attribute in message.attributes {
                     if let attribute = attribute as? ReplyThreadMessageAttribute, attribute.count > 0 {
                         if let peer = chatInteraction.peer, peer.isSupergroup, !chatInteraction.mode.isThreadMode {
-                            let attr: NSAttributedString = .initialize(string: Int(attribute.count).prettyNumber, color: isStateOverlayLayout ? stateOverlayTextColor : !hasBubble ? theme.colors.grayText : theme.chat.grayText(isIncoming, object.renderType == .bubble), font: renderType == .bubble ? .normal(.small) : .normal(.short))
+                            let attr: NSAttributedString = .initialize(string: NagramOptions.exactMessageCounters.value ? Int(attribute.count).separatedNumber : Int(attribute.count).prettyNumber, color: isStateOverlayLayout ? stateOverlayTextColor : !hasBubble ? theme.colors.grayText : theme.chat.grayText(isIncoming, object.renderType == .bubble), font: renderType == .bubble ? .normal(.small) : .normal(.short))
                             self.replyCount = TextViewLayout(attr, maximumNumberOfLines: 1)
                         }
                         break
@@ -2678,6 +2709,13 @@ public class ChatRowItem: TableRowItem {
                     
                     
                     var string = strings().chatMessageEdited
+                    // MARK: NAGRAM
+                    let editedMark = NagramOptions.editedMark.value
+                    if NagramOptions.editedIcon.value {
+                        string = "✎"
+                    } else if !editedMark.isEmpty {
+                        string = editedMark
+                    }
                     
                     if message_primary_edited_date {
                         string = strings().chatRowEdited(stringForMediumDate(timestamp: editedAttribute.date))
@@ -2740,9 +2778,11 @@ public class ChatRowItem: TableRowItem {
                     }
                 }
                 if let attribute = attribute as? ViewCountMessageAttribute {
-                    let attr: NSAttributedString = .initialize(string: max(1, attribute.count).prettyNumber, color: isStateOverlayLayout ? stateOverlayTextColor : !hasBubble ? theme.colors.grayText : theme.chat.grayText(isIncoming, object.renderType == .bubble), font: renderType == .bubble ? .normal(.small) : .normal(.short))
+                    // MARK: NAGRAM
+                    let viewsText = NagramOptions.exactMessageCounters.value ? max(1, attribute.count).separatedNumber : max(1, attribute.count).prettyNumber
+                    let attr: NSAttributedString = .initialize(string: viewsText, color: isStateOverlayLayout ? stateOverlayTextColor : !hasBubble ? theme.colors.grayText : theme.chat.grayText(isIncoming, object.renderType == .bubble), font: renderType == .bubble ? .normal(.small) : .normal(.short))
 
-                    self.channelViews = TextViewLayout(attr, maximumNumberOfLines: 1)
+                    self.channelViews = NagramOptions.hideMessageViews.value ? nil : TextViewLayout(attr, maximumNumberOfLines: 1)
                     var author: String = ""
                     var forwardCount: Int?
                     for attr in message.attributes {
@@ -2812,6 +2852,10 @@ public class ChatRowItem: TableRowItem {
             }
 
             if message.adAttribute == nil, chatInteraction.mode.customChatContents == nil {
+                // MARK: NAGRAM
+                if NagramOptions.messageIdPlace.value == 1, message.id.namespace == Namespaces.Message.Cloud {
+                    fullDate += "\nID: \(message.id.id)"
+                }
                 self.fullDate = fullDate
             }
         }
@@ -3017,7 +3061,8 @@ public class ChatRowItem: TableRowItem {
         }
 
 
-        self.rightFrames = isIncomingTypingDraft ? nil : ChatRightView.Frames(self, size: NSMakeSize(.greatestFiniteMagnitude, rightHeight))
+        // MARK: NAGRAM
+        self.rightFrames = isIncomingTypingDraft || (isSticker && NagramOptions.hideStickerTime.value) ? nil : ChatRightView.Frames(self, size: NSMakeSize(.greatestFiniteMagnitude, rightHeight))
 
         let cachedRightSize = rightSize
         let cachedBlockWidth = blockWidth
@@ -3885,6 +3930,13 @@ public class ChatRowItem: TableRowItem {
     }
     
     public override var menuAdditionView: Signal<Window?, NoError> {
+        // MARK: NAGRAM
+        if NagramOptions.hideReactionMenu.value {
+            return .single(nil)
+        }
+        if NagramOptions.hideReactionMenuWhenSelecting.value, chatInteraction.presentation.state == .selecting {
+            return .single(nil)
+        }
         if canReact {
             
             let context = self.context

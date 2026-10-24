@@ -13,6 +13,7 @@ let package = Package(
     dependencies: [
         .package(name: "ObjcUtils", path: "../ObjcUtils"),
         .package(name: "SSignalKit", path: "../../submodules/telegram-ios/submodules/SSignalKit"),
+        .package(name: "NagramCore", path: "../NagramCore"),
         .package(name: "TelegramCore", path: "../../submodules/telegram-ios/submodules/TelegramCore"),
         .package(name: "Postbox", path: "../../submodules/telegram-ios/submodules/Postbox"),
         .package(name: "TGUIKit", path: "../TGUIKit"),
@@ -47,6 +48,7 @@ let package = Package(
                 .product(name: "ObjcUtils", package: "ObjcUtils", condition: nil),
                 .product(name: "TGUIKit", package: "TGUIKit", condition: nil),
                 .product(name: "SwiftSignalKit", package: "SSignalKit", condition: nil),
+    .product(name: "NagramCore", package: "NagramCore", condition: nil),
                 .product(name: "TelegramCore", package: "TelegramCore", condition: nil),
                 .product(name: "Postbox", package: "Postbox", condition: nil),
                 .product(name: "ColorPalette", package: "ColorPalette", condition: nil),

@@ -18,6 +18,7 @@ import GeneralRows
 import InputDataUI
 import InlineMediaGrid
 import ChatModeTypes
+import NagramCore
 
 
 
@@ -781,7 +782,8 @@ public final class GifKeyboardController<Context: AccountContextProtocol> : Tele
                     tabsEntries.append(.recent)
                 }
                 tabsEntries.append(.trending)
-                for tab in tabs {
+                // MARK: NAGRAM
+                for tab in tabs where !NagramOptions.hideGifCategories.value {
                     tabsEntries.append(.recommended(tab))
                 }
                 if recent.isEmpty && current.tab == .recent {

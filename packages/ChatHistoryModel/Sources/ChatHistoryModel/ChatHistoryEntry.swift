@@ -11,6 +11,7 @@ import TelegramUtils
 import ChatModeTypes
 import MessageUtils
 import Localization
+import NagramCore
 
 
 public struct ChatPollStateData : Equatable {
@@ -919,7 +920,8 @@ public func messageEntries(_ messagesEntries: [MessageHistoryEntry], location: C
     }
 
     for (i, entry) in messagesEntries.enumerated() {
-        var message = entry.message.withAppliedEphemeralReplacementMessage()
+        // MARK: NAGRAM
+        var message = nagramFilteredMessage(entry.message.withAppliedEphemeralReplacementMessage(), accountPeerId: accountPeerId)
         
     
         if message.media.isEmpty {
@@ -1276,7 +1278,7 @@ public func messageEntries(_ messagesEntries: [MessageHistoryEntry], location: C
             entryWalletFiatRate = nil
         }
 
-        additionalData = MessageEntryAdditionalData(pollStateData: pollData, highlightFoundText: highlightFoundText, isThreadLoading: threadLoading == message.id, updatingMedia: updatingMedia[message.id], chatTheme: chatTheme, reactions: sharedReactionsProjection, transribeState: transribeState[message.id], transcriptionTranslate: transcriptionTranslate, isRevealed: mediaRevealed.contains(message.id), translate: messageTranslate, replyTranslate: replyTranslate, storyReadMaxId: (message.media.first is TelegramMediaStory) ? storyState?.maxReadId : nil, authorStoryStats: message.author.flatMap { peerStoryStats[$0.id] }, cachedData: sharedCachedDataProjection, automaticDownload: sharedAutoDownloadProjection, savedMessageTags: savedMessageTags, codeSyntaxData: entryCodeSyntax, messageEffect: messageEffect, factCheckRevealed: factCheckRevealed.contains(message.id), solutionRevealed: solutionRevealed.contains(message.id), quoteRevealed: entryQuoteRevealed, detailsExpanded: entryDetailsExpanded, monoforumState: monoforumState, canHighlightLinks: canHighlightLinksDefault, summarize: summarize, walletFiatRate: entryWalletFiatRate)
+        additionalData = MessageEntryAdditionalData(pollStateData: pollData, highlightFoundText: highlightFoundText, isThreadLoading: threadLoading == message.id, updatingMedia: updatingMedia[message.id], chatTheme: chatTheme, reactions: sharedReactionsProjection, transribeState: transribeState[message.id], transcriptionTranslate: transcriptionTranslate, isRevealed: mediaRevealed.contains(message.id) || NagramOptions.revealSpoilers.value, translate: messageTranslate, replyTranslate: replyTranslate, storyReadMaxId: (message.media.first is TelegramMediaStory) ? storyState?.maxReadId : nil, authorStoryStats: message.author.flatMap { peerStoryStats[$0.id] }, cachedData: sharedCachedDataProjection, automaticDownload: sharedAutoDownloadProjection, savedMessageTags: savedMessageTags, codeSyntaxData: entryCodeSyntax, messageEffect: messageEffect, factCheckRevealed: factCheckRevealed.contains(message.id), solutionRevealed: solutionRevealed.contains(message.id), quoteRevealed: entryQuoteRevealed, detailsExpanded: entryDetailsExpanded, monoforumState: monoforumState, canHighlightLinks: canHighlightLinksDefault, summarize: summarize, walletFiatRate: entryWalletFiatRate)
         let data = ChatHistoryEntryData(entry.location, additionalData, autoplayMedia)
         
        

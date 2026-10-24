@@ -27,6 +27,7 @@ import PremiumStatusUI
 import SystemPermissions
 import Svg
 import LocalAuthentication
+import NagramCore
 
 public protocol BrowserPage {
     func contextMenu() -> ContextMenu
@@ -168,6 +169,13 @@ private final class Arguments {
 
 
 
+// MARK: NAGRAM
+func nagramWebAppSize(_ base: NSSize, limit: NSSize) -> NSSize {
+    let width = CGFloat(min(max(NagramOptions.webAppWidthScale.value, 100), 200)) / 100
+    let height = CGFloat(min(max(NagramOptions.webAppHeightScale.value, 100), 200)) / 100
+    return NSMakeSize(min(floor(base.width * width), limit.width), min(floor(base.height * height), limit.height))
+}
+
 public final class WebappBrowser : Window {
     public let containerView = View()
     private let shadow = SimpleShapeLayer()
@@ -182,7 +190,8 @@ public final class WebappBrowser : Window {
         let screen = NSScreen.main!
         
         let s = NSMakeSize(screen.frame.width + 20, screen.frame.height + 20)
-        let size = NSMakeSize(420, min(420 + 420 * 0.7, s.height - 80))
+        // MARK: NAGRAM
+        let size = nagramWebAppSize(NSMakeSize(420, 420 + 420 * 0.7), limit: NSMakeSize(s.width - 80, s.height - 80))
         
         let originX = windowFrame.origin.x + (windowFrame.width - size.width) / 2
         let originY = windowFrame.origin.y + (windowFrame.height - size.height) / 2

@@ -4,6 +4,7 @@ import Postbox
 import TGUIKit
 import TelegramTheme
 import InAppSettings
+import NagramCore
 
 public extension AutomaticMediaDownloadSettings {
     
@@ -31,6 +32,15 @@ public extension AutomaticMediaDownloadSettings {
             
             if let ext = media.fileName?.nsstring.pathExtension.lowercased(), dangerExts.components(separatedBy: " ").contains(ext) {
                 return false
+            }
+            // MARK: NAGRAM
+            if let ext = media.fileName?.nsstring.pathExtension.lowercased() {
+                if NagramOptions.blockExecutableAutoDownload.value, ["exe", "msi", "bat", "cmd", "com", "scr", "ps1", "vbs", "apk", "apks", "xapk", "dmg", "sh", "jar", "deb", "rpm", "appimage"].contains(ext) {
+                    return false
+                }
+                if NagramOptions.blockArchiveAutoDownload.value, ["zip", "rar", "7z", "tar", "gz", "tgz", "bz2", "xz", "zst", "lz", "lzma", "cab", "iso"].contains(ext) {
+                    return false
+                }
             }
             
             switch true {

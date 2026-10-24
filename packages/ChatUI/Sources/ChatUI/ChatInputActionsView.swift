@@ -17,6 +17,7 @@ import ColorPalette
 import MessageUtils
 import FoundationUtils
 import ChatHistoryModel
+import NagramCore
 
 public final class StarsSendActionView : Control {
     private static let horizontalInset: CGFloat = 8
@@ -192,7 +193,8 @@ public class ChatInputActionsView: View, Notifable {
 
     private func addHoverObserver() {
         entertaiments.set(handler: { [weak self] _ in
-            guard let self, !ChatInputUIHooks.shared.isEntertainmentSidebarVisible(self.window) else { return }
+            // MARK: NAGRAM
+            guard let self, !NagramOptions.disableEmojiHover.value, !ChatInputUIHooks.shared.isEntertainmentSidebarVisible(self.window) else { return }
             self.showEntertainment()
         }, for: .LongOver)
     }
@@ -246,7 +248,8 @@ public class ChatInputActionsView: View, Notifable {
         if let value = value as? ChatPresentationInterfaceState, let oldValue = oldValue as? ChatPresentationInterfaceState {
             if value.interfaceState != oldValue.interfaceState || !animated || value.inputQueryResult != oldValue.inputQueryResult || value.inputContext != oldValue.inputContext || value.sidebarEnabled != oldValue.sidebarEnabled || value.sidebarShown != oldValue.sidebarShown || value.layout != oldValue.layout || value.isKeyboardActive != oldValue.isKeyboardActive || value.isKeyboardShown != oldValue.isKeyboardShown || value.slowMode != oldValue.slowMode || value.hasScheduled != oldValue.hasScheduled || value.messageSecretTimeout != oldValue.messageSecretTimeout || value.boostNeed != oldValue.boostNeed || value.restrictedByBoosts != oldValue.restrictedByBoosts || value.interfaceState.messageEffect != oldValue.interfaceState.messageEffect || value.sendPaidMessageStars != oldValue.sendPaidMessageStars || value.hasGift != oldValue.hasGift || value.allowPostSuggestion != oldValue.allowPostSuggestion || value.interfaceState.suggestPost != oldValue.interfaceState.suggestPost {
 
-                if chatInteraction.hasSetDestructiveTimer, value.interfaceState.messageEffect == nil {
+                // MARK: NAGRAM
+                if chatInteraction.hasSetDestructiveTimer, value.interfaceState.messageEffect == nil, !NagramOptions.hideAutoDeleteButton.value {
                     if secretTimer == nil {
                         let timer = ChatAccessibleImageButton()
                         timer.accessibilityLabelProvider = { [weak self] in
@@ -297,7 +300,8 @@ public class ChatInputActionsView: View, Notifable {
 
                 setExtraButton(keyboard, hidden: !value.isKeyboardActive, animated: animated)
                 let inputIsEmpty = value.effectiveInput.inputText.isEmpty
-                setExtraButton(gift, hidden: !value.hasGift || !inputIsEmpty, animated: animated)
+                // MARK: NAGRAM
+                setExtraButton(gift, hidden: !value.hasGift || !inputIsEmpty || NagramOptions.hideGiftButton.value, animated: animated)
                 setExtraButton(suggestPost, hidden: !value.allowPostSuggestion || value.interfaceState.suggestPost != nil, animated: animated)
 
                 if let keyboardMessage = value.keyboardButtonsMessage {

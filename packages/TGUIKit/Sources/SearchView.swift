@@ -1,6 +1,7 @@
 import Cocoa
 import SwiftSignalKit
 import ColorPalette
+import NagramCore
 
 
 public class SearchTextField: BaseTextView {
@@ -356,7 +357,9 @@ open class SearchView: OverlayControl, NSTextViewDelegate {
     required public init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         self.backgroundColor = .grayBackground
-        self.layer?.cornerRadius = 15
+        // MARK: NAGRAM
+        let nagramSearchRoundness = NagramOptions.searchRoundness.value
+        self.layer?.cornerRadius = nagramSearchRoundness > 0 ? floor(15 * CGFloat(min(max(nagramSearchRoundness, 10), 100)) / 100) : 15
         progressIndicator.isHidden = true
 //        progressIndicator.numberOfLines = 8
 //        progressIndicator.innerMargin = 3;

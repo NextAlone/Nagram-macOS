@@ -25,6 +25,7 @@ import TelegramMediaUtils
 import TelegramTheme
 import TelegramUtils
 import InlineStickerLayer
+import NagramCore
 
 public func pollVoteRestrictionText(poll: TelegramMediaPoll, chatPeer: Peer?) -> String? {
     if !poll.countries.isEmpty {
@@ -1623,13 +1624,23 @@ public func chatMenuItems(for message: Message, entry: ChatHistoryEntry?, textLa
             }
         }
 
-        let blocks:[[ContextMenuItem]] = [zeroBlock, firstBlock,
+        // MARK: NAGRAM
+        let nagramItems = nagramMessageMenuItems(data, isService: isService)
+        secondBlock.append(contentsOf: nagramItems.afterPin)
+        secondBlock.append(contentsOf: nagramItems.afterForward)
+        let nagramBlock = nagramFilterMenuBlock(nagramItems.beforeDelete)
+        var blocks:[[ContextMenuItem]] = [zeroBlock, firstBlock,
                                           add_secondBlock,
                                           thirdBlock,
                                           secondBlock,
                                           fourthBlock,
+                                          nagramBlock,
                                           fifthBlock,
-                                          sixBlock, sevenBlock].filter { !$0.isEmpty }
+                                          sixBlock, sevenBlock].map { nagramFilterMenuBlock($0) }
+        if NagramOptions.moveWhoReactedToTop.value {
+            blocks = [blocks[5], blocks[9]] + blocks.enumerated().filter { $0.offset != 5 && $0.offset != 9 }.map { $0.element }
+        }
+        blocks = blocks.filter { !$0.isEmpty }
         
         for (i, block) in blocks.enumerated() {
             if i == 0 {

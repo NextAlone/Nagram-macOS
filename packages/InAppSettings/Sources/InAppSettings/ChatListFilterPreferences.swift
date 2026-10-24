@@ -3,6 +3,7 @@ import SwiftSignalKit
 import TelegramCore
 import Postbox
 import Cocoa
+import NagramCore
 
 
 public extension ChatListFilter {
@@ -115,8 +116,13 @@ public struct ChatListFolders : Equatable {
 public func chatListFilterPreferences(engine: TelegramEngine) -> Signal<ChatListFolders, NoError> {
     let showTags = engine.data.subscribe(TelegramEngine.EngineData.Item.ChatList.FiltersDisplayTags())
 
-    return combineLatest(engine.peers.updatedChatListFilters(), chatListFolderSettings(engine.account.postbox), showTags) |> map {
-        return ChatListFolders(list: $0, sidebar: $1.sidebar, showTags: $2)
+    // MARK: NAGRAM
+    return combineLatest(engine.peers.updatedChatListFilters(), chatListFolderSettings(engine.account.postbox), showTags, NagramOptions.hideAllChatsFolder.signal) |> map { list, settings, showTags, hideAll in
+        var list = list
+        if hideAll, list.contains(where: { $0 != .allChats }) {
+            list.removeAll(where: { $0 == .allChats })
+        }
+        return ChatListFolders(list: list, sidebar: settings.sidebar, showTags: showTags)
     }
 }
 

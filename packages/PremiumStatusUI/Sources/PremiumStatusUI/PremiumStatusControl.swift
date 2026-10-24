@@ -12,6 +12,7 @@ import TelegramUtils
 import TelegramTheme
 import InAppSettings
 import InlineStickerLayer
+import NagramCore
 
 
 public final class StarsEffectLayer: SimpleLayer {
@@ -478,7 +479,8 @@ public final class PremiumStatusControl : Control, PremiumStatusRenderHost {
     
     public static func control(_ peer: Peer, account: Account, inlinePacksContext: InlineStickersContext?, left: Bool, isSelected: Bool, isBig: Bool = false, playTwice: Bool = false, color: NSColor? = nil, cached: PremiumStatusControl?, animated: Bool, autoupdate: Bool = true) -> PremiumStatusControl? {
         var current: PremiumStatusControl? = nil
-        if (peer.isVerified || peer.isScam || peer.isFake || peer.isPremium || peer.emojiStatus != nil) && !left || (left && peer.verificationIconFileId != nil) {
+        // MARK: NAGRAM
+        if hasControl(peer, left: left) {
             current = cached ?? PremiumStatusControl(frame: .zero)
         }
                 
@@ -487,7 +489,9 @@ public final class PremiumStatusControl : Control, PremiumStatusRenderHost {
     }
     
     public static func hasControl(_ peer: Peer, left: Bool) -> Bool {
-        return (peer.isVerified || peer.isScam || peer.isFake || peer.isPremium || peer.emojiStatus != nil) && !left || (left && peer.verificationIconFileId != nil)
+        // MARK: NAGRAM
+        let premium = !NagramOptions.hidePremiumBadges.value && (peer.isPremium || peer.emojiStatus != nil)
+        return (peer.isVerified || peer.isScam || peer.isFake || premium) && !left || (left && peer.verificationIconFileId != nil)
     }
     public static func controlSize(_ peer: Peer, _ isBig: Bool, left: Bool) -> NSSize? {
         if hasControl(peer, left: left) {

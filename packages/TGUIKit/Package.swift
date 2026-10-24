@@ -16,6 +16,7 @@ let package = Package(
         // Dependencies declare other packages that this package depends on.
         // .package(url: /* package url */, from: "1.0.0"),
         .package(name: "SSignalKit", path: "../../submodules/telegram-ios/submodules/SSignalKit"),
+        .package(name: "NagramCore", path: "../NagramCore"),
         .package(name: "ColorPalette", path: "../ColorPalette"),
         .package(name: "KeyboardKey", path: "../KeyboardKey"),
         .package(name: "ObjcUtils", path: "../ObjcUtils"),
@@ -25,6 +26,7 @@ let package = Package(
         .target(
             name: "TGUIKit",
             dependencies: [.product(name: "SwiftSignalKit", package: "SSignalKit", condition: nil),
+    .product(name: "NagramCore", package: "NagramCore", condition: nil),
                            .product(name: "ColorPalette", package: "ColorPalette", condition: nil),
                            .product(name: "KeyboardKey", package: "KeyboardKey", condition: nil),
                            .product(name: "ObjcUtils", package: "ObjcUtils", condition: nil),

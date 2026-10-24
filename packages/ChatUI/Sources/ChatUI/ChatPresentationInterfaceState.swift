@@ -17,6 +17,7 @@ import TelegramCallsCore
 import MediaRecorderUI
 import StarsUI
 import InputView
+import NagramCore
 
 public final class ChatPinnedMessage: Equatable {
     public let messageId: MessageId
@@ -259,6 +260,17 @@ public struct ChatBotManagerData : Equatable {
 
 
 public class ChatPresentationInterfaceState: Equatable {
+
+    // MARK: NAGRAM
+    fileprivate func nagramChannelBottomState(_ notificationSettings: TelegramPeerNotificationSettings) -> ChatState? {
+        if NagramOptions.channelDiscussButton.value, case let .known(groupId) = discussionGroupId, let groupId = groupId {
+            return .channelWithDiscussion(discussionGroupId: groupId, leftAction: notificationSettings.isMuted ? strings().chatInputUnmute : strings().chatInputMute, rightAction: strings().chatInputDiscuss)
+        }
+        if NagramOptions.hideChannelMuteButton.value {
+            return .restricted("")
+        }
+        return nil
+    }
     
     public struct BotMenu : Equatable {
         public var commands: [BotCommand]
@@ -813,6 +825,10 @@ public class ChatPresentationInterfaceState: Equatable {
                         chatInteraction.removeAndCloseChat()
                     }, right: nil, left: nil)
                 } else if !peer.canSendMessage(chatMode.isThreadMode), let notificationSettings = notificationSettings, peer.isChannel {
+                    // MARK: NAGRAM
+                    if let state = nagramChannelBottomState(notificationSettings) {
+                        return state
+                    }
                     return .action(notificationSettings.isMuted ? strings().chatInputUnmute : strings().chatInputMute, { chatInteraction in
                         chatInteraction.toggleNotifications(nil)
                     }, right: gift, left: monoforum)
@@ -842,6 +858,10 @@ public class ChatPresentationInterfaceState: Equatable {
             }
             
             if let peer = peer, !peer.canSendMessage(chatMode.isThreadMode), let notificationSettings = notificationSettings, peer.isChannel {
+                // MARK: NAGRAM
+                if let state = nagramChannelBottomState(notificationSettings) {
+                    return state
+                }
                 return .action(notificationSettings.isMuted ? strings().chatInputUnmute : strings().chatInputMute, { chatInteraction in
                     chatInteraction.toggleNotifications(nil)
                 }, right: nil, left: nil)

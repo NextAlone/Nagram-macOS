@@ -18,6 +18,7 @@ import StoriesUI
 import ChatHistoryModel
 import ChatUI
 import ChatModeTypes
+import NagramCore
 
 extension SearchMessagesLocation {
     public func withUpdatedSouce(_ source: SearchController.MessaagesSourceValue) -> SearchMessagesLocation {
@@ -1061,7 +1062,8 @@ public class SearchController<Context: AccountContextProtocol>: GenericViewContr
                         
                             let adPeers: Signal<[AdPeer], NoError>
                             
-                            if query.length >= 4 {
+                            // MARK: NAGRAM
+                            if query.length >= 4, !NagramOptions.hideSponsoredMessages.value {
                                 adPeers = combineLatest(context.engine.peers.searchAdPeers(query: query), searchAdState) |> map { peers, state in
                                     let peers = peers.filter({
                                         !state.exclude.contains($0.opaqueId) && !state.excludeAll
@@ -1072,7 +1074,7 @@ public class SearchController<Context: AccountContextProtocol>: GenericViewContr
                                 adPeers = .single([])
                             }
                             
-                            foundRemotePeers = query.hasPrefix("#") || query.hasPrefix("$") || !options.contains(.chats) || !globalTags.isEmpty || globalTags.listType == .bots ? .single(([], [], false)) : .single(([], [], true)) |> then(combineLatest(context.engine.contacts.searchRemotePeers(query: query, scope: globalTags.scope(.allChats)), adPeers)
+                            foundRemotePeers = NagramOptions.disableGlobalSearch.value || query.hasPrefix("#") || query.hasPrefix("$") || !options.contains(.chats) || !globalTags.isEmpty || globalTags.listType == .bots ? .single(([], [], false)) : .single(([], [], true)) |> then(combineLatest(context.engine.contacts.searchRemotePeers(query: query, scope: globalTags.scope(.allChats)), adPeers)
                                 |> delay(0.2, queue: prepareQueue)
                                 |> map { (founds, adPeers) -> ([FoundPeer], [FoundPeer], [AdPeer]) in
                                     return (founds.0.filter { found -> Bool in

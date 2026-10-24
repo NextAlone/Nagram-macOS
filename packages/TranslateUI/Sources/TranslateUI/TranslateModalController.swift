@@ -19,6 +19,7 @@ import LocalAnimations
 import ChatUI
 import InputView
 import InlineStickerLayer
+import NagramCore
 
 private enum TranslateTabMode: Equatable {
     case translate
@@ -976,6 +977,16 @@ private func entries(_ state: State, arguments: Arguments) -> [InputDataEntry] {
 
 
 func translateBlocks(context: any AccountContextProtocol, from: String?, to: String, blocks: [(String, [MessageTextEntity])], configState: AppConfigTranslateState, tone: TranslationTone = .neutral) -> Signal<(detect: String?, result: String, entities: [MessageTextEntity]), Translate.Error> {
+    // MARK: NAGRAM
+    if let service = NagramServicesConfig.current.translationService, service.kind == .translation {
+        return NagramServiceClient.translate(blocks.map { $0.0 }, to: to, service: service)
+        |> mapError { _ -> Translate.Error in
+            return .generic
+        }
+        |> map { results in
+            return (detect: nil, result: results.joined(), entities: [])
+        }
+    }
     var signals:[Signal<(detect: String?, result: String, entities: [MessageTextEntity]), Translate.Error>] = []
     for block in blocks {
         switch configState {
@@ -1275,7 +1286,7 @@ public func TranslateModalController(context: any AccountContextProtocol, from: 
             |> map { result -> (detect: String?, result: String, entities: [MessageTextEntity]) in
                 return (detect: nil, result: result.0, entities: result.1)
             }
-        } else if let messageId = messageId {
+        } else if let messageId = messageId, NagramServicesConfig.current.translationService == nil {
             signal = context.engine.messages.translate(text: text, toLang: stateValue.with { $0.to }, tone: stateValue.with { $0.tone }, messageId: messageId)
             |> mapError { _ -> Translate.Error in
                 return .generic

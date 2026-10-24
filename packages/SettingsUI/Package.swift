@@ -3,6 +3,7 @@
 import PackageDescription
 
 let deps: [(String, String)] = [
+    ("NagramCore", "../NagramCore"),
 
     ("AlertsUI", "../AlertsUI"),
     ("AvatarEditorUI", "../AvatarEditorUI"),

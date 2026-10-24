@@ -10,6 +10,7 @@ import TelegramUtils
 import GeneralRows
 import ShortPeerRow
 import ChatUI
+import NagramCore
 
 
 private enum ContactsControllerEntryId: Hashable {
@@ -226,6 +227,10 @@ fileprivate func prepareEntries(from:[AppearanceWrapperEntry<ContactsEntry>]?, t
                 if let presence = presence as? TelegramUserPresence {
                     let timestamp = CFAbsoluteTimeGetCurrent() + NSTimeIntervalSince1970
                     (string, _, color) = stringAndActivityForUserPresence(presence, timeDifference: context.timeDifference, relativeTo: Int32(timestamp))
+                }
+                // MARK: NAGRAM
+                if NagramOptions.markMutualContacts.value, let user = peer as? TelegramUser, user.flags.contains(.mutualContact) {
+                    string = "⇄ " + string
                 }
                 item = ShortPeerRowItem(initialSize, peer: peer, account: context.account, context: context, stableId: entry.stableId,statusStyle: ControlStyle(foregroundColor:color), status: string, borderType: [.Right], highlightVerified: true, customTheme: .init(backgroundColor: .clear), story: nil, openStory: { initialId in
                     arguments.openStory(initialId, true)

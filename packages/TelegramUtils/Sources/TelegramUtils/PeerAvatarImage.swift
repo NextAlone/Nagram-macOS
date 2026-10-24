@@ -16,7 +16,17 @@ import InlineStickersShare
 import InlineStickers
 #endif
 #endif
+import NagramCore
 public let graphicsThreadPool = ThreadPool(threadCount: 5, threadPriority: 1)
+
+// MARK: NAGRAM
+public func nagramAvatarCornerRadius(_ size: NSSize) -> CGFloat? {
+    let value = NagramOptions.avatarRoundness.value
+    guard value > 0, value < 100 else {
+        return nil
+    }
+    return floor(min(size.width, size.height) / 2 * CGFloat(max(value, 10)) / 100)
+}
 
 public enum PeerPhoto {
     case peer(Peer, TelegramMediaImageRepresentation?, PeerNameColor?, [String], Message?, CGFloat?)
@@ -27,8 +37,12 @@ private let capHolder:Atomic<[String : CGImage]> = Atomic(value: [:])
 
 private func peerImage(account: Account, peer: Peer, displayDimensions: NSSize, representation: TelegramMediaImageRepresentation?, message: Message? = nil, displayLetters: [String], font: NSFont, scale: CGFloat, genCap: Bool, synchronousLoad: Bool, disableForum: Bool = false, cornerRadius: CGFloat? = nil, forceForum: Bool = false) -> Signal<(CGImage?, Bool), NoError> {
 
-    let isForum: Bool = ((peer.isForumOrMonoForum || (peer is TelegramCommunity)) || forceForum) && !disableForum
-    let isMonoforum: Bool = peer.isMonoForum
+    // MARK: NAGRAM
+    let nagramRadius = nagramAvatarCornerRadius(displayDimensions)
+    let nagramUniform = nagramRadius != nil && NagramOptions.uniformAvatarShapes.value
+    let isForum: Bool = ((peer.isForumOrMonoForum || (peer is TelegramCommunity)) || forceForum) && !disableForum && !nagramUniform
+    let isMonoforum: Bool = peer.isMonoForum && !nagramUniform
+    let cornerRadius: CGFloat? = cornerRadius ?? nagramRadius
     let forcedCommunityCornerRadius: CGFloat = floor(min(displayDimensions.width, displayDimensions.height) * 0.176)
 
     if isMonoforum {
@@ -123,7 +137,7 @@ private func peerImage(account: Account, peer: Peer, displayDimensions: NSSize, 
                             let rounded = DrawingContext(size: img.size, scale: 1.0)
                             rounded.withContext { c in
                                 c.clear(size.bounds)
-                                c.round(size, isForum ? min(floor(size.height / 4), size.height / 2) : size.height / 2)
+                                c.round(size, isForum ? min(floor(size.height / 4), size.height / 2) : (cornerRadius.map { $0 * size.height / max(displayDimensions.height, 1) } ?? size.height / 2))
                                 c.clear(size.bounds)
                                 c.draw(ctx.generateImage()!, in: size.bounds)
                             }
@@ -176,7 +190,7 @@ private func peerImage(account: Account, peer: Peer, displayDimensions: NSSize, 
             if let cached = cached {
                 return .single((cached, false))
             } else {
-                let emptyPhoto = generateEmptyPhoto(displayDimensions, type: .peer(colors: color, letter: letters, font: font, cornerRadius: forceForum ? forcedCommunityCornerRadius : (isForum ? floor(displayDimensions.height / 3) : nil)), bubble: isMonoforum)
+                let emptyPhoto = generateEmptyPhoto(displayDimensions, type: .peer(colors: color, letter: letters, font: font, cornerRadius: forceForum ? forcedCommunityCornerRadius : (isForum ? floor(displayDimensions.height / 3) : cornerRadius)), bubble: isMonoforum)
                 return (synchronousLoad ? emptyPhoto : emptyPhoto |> runOn(graphicsThreadPool)) |> mapToSignal { image -> Signal<(CGImage?, Bool), NoError> in
                     if let image = image {
                         return cacheEmptyPeerPhoto(image: image, peerId: peer.id, symbol: symbol, color: color.top, size: displayDimensions, scale: scale, isForum: isForum, isMonoforum: isMonoforum) |> map {

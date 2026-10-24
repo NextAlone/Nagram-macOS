@@ -16,6 +16,7 @@ import MessageTextUtils
 import GeneralRows
 import AlertsUI
 import ChatModeTypes
+import NagramCore
 
 private struct State : Equatable {
     var searchCategories: EmojiSearchCategories?
@@ -418,6 +419,9 @@ private enum StickerPackEntry : TableItemListNodeEntry {
 }
 
 private func stickersEntries(view: ItemCollectionsView?, context: any AccountContextProtocol, featured:[FeaturedStickerPackItem], settings: StickerSettings, searchData: StickerPacksSearchData?, specificPack:Tuple2<PeerSpecificStickerPackData, Peer>?, mode: EntertainmentViewController.Mode) -> [StickerPackEntry] {
+    // MARK: NAGRAM
+    let featured = NagramOptions.hideRecommendedStickers.value ? [] : featured
+    let specificPack = NagramOptions.hideGroupStickers.value ? nil : specificPack
     var entries:[StickerPackEntry] = []
     var index: Int32 = 0
 
@@ -473,7 +477,8 @@ private func stickersEntries(view: ItemCollectionsView?, context: any AccountCon
                             }
                         }
                     }
-                    if files.count == 20 {
+                    // MARK: NAGRAM
+                    if files.count == (NagramOptions.recentStickerLimit.value > 0 ? NagramOptions.recentStickerLimit.value : 20) {
                         break
                     }
                 }
@@ -623,6 +628,9 @@ private func stickersEntries(view: ItemCollectionsView?, context: any AccountCon
 }
 
 private func packEntries(view: ItemCollectionsView?, context: any AccountContextProtocol, specificPack:Tuple2<PeerSpecificStickerPackData, Peer>?, hasUnread: Bool, featured:[FeaturedStickerPackItem], settings: StickerSettings, mode: EntertainmentViewController.Mode) -> [PackEntry] {
+    // MARK: NAGRAM
+    let featured = NagramOptions.hideRecommendedStickers.value ? [] : featured
+    let specificPack = NagramOptions.hideGroupStickers.value ? nil : specificPack
     var entries:[PackEntry] = []
     var index: Int = 0
     
@@ -1283,7 +1291,8 @@ public class NStickersViewController<Context: AccountContextProtocol>: TelegramG
     
     private func shouldSendActivity(_ isPresent: Bool) {
         if let chatInteraction = chatInteraction {
-            if chatInteraction.peerId.toInt64() != 0 {
+            // MARK: NAGRAM
+            if chatInteraction.peerId.toInt64() != 0, !NagramOptions.hideSendStatus.value || !isPresent {
                 chatInteraction.interactionContext.account.updateLocalInputActivity(peerId: chatInteraction.activitySpace, activity: .choosingSticker, isPresent: isPresent)
 
             }

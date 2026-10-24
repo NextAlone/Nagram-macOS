@@ -26,6 +26,7 @@ import FilePanels
 import PremiumStatusUI
 import SceneEffects
 import InlineStickerLayer
+import NagramCore
 
 
 public class AccountInfoItem: GeneralRowItem {
@@ -69,7 +70,8 @@ public class AccountInfoItem: GeneralRowItem {
         activeTitle.addAttribute(.foregroundColor, value: theme.colors.underSelectedColor, range: titleAttr.range)
         self.titleActiveLayout = .init(activeTitle, maximumNumberOfLines: 1)
         
-        if let phone = peer.phone {
+        // MARK: NAGRAM
+        if let phone = peer.phone, !NagramOptions.hideMyPhone.value {
             _ = attr.append(string: SettingsHooks.shared.formatPhoneNumber(context, phone), color: theme.colors.grayText, font: .normal(.text))
         }
         if let username = peer.username, !username.isEmpty {

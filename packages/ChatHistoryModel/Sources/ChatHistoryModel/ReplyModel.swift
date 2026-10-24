@@ -14,6 +14,7 @@ import MessageUtils
 import MessageTextUtils
 import LocalAnimations
 import InlineStickerLayer
+import NagramCore
 
 public class ReplyModel: ChatAccessoryModel {
 
@@ -119,6 +120,10 @@ public class ReplyModel: ChatAccessoryModel {
     }
     
     public override var updatedMedia: Media? {
+        // MARK: NAGRAM
+        if NagramOptions.hideReplyThumbnail.value {
+            return nil
+        }
         
         let anyMedia: Media? = self.quote?.media ?? (replyMessage?.containsSecretMedia == false ? self.replyMessage?.anyMedia : nil)
         

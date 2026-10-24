@@ -15,6 +15,7 @@ import TelegramMediaUtils
 import TelegramTheme
 import TelegramUtils
 import InlineStickerLayer
+import NagramCore
 
 public func canDeleteReactionsInChat(message: Message) -> Bool {
     guard let channel = message.peers[message.id.peerId] as? TelegramChannel else {
@@ -125,7 +126,7 @@ public final class MessageReadMenuRowItem : AppMenuRowItem {
                 } else if let peers = read {
                     if peers.isEmpty {
                         if message.id.peerId.namespace == Namespaces.Peer.CloudUser {
-                            return strings().chatMessageReadStatsShowDate
+                            return NagramOptions.hideReadTime.value ? strings().chatMessageReadStatsEmptyViews : strings().chatMessageReadStatsShowDate
                         } else {
                             return strings().chatMessageReadStatsEmptyViews
                         }
@@ -149,7 +150,7 @@ public final class MessageReadMenuRowItem : AppMenuRowItem {
                     }
                 } else {
                     if message.id.peerId.namespace == Namespaces.Peer.CloudUser {
-                        return strings().chatMessageReadStatsShowDate
+                        return NagramOptions.hideReadTime.value ? strings().chatMessageReadStatsEmptyViews : strings().chatMessageReadStatsShowDate
                     } else {
                         return strings().chatMessageReadStatsEmptyViews
                     }

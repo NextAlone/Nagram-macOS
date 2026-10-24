@@ -7,6 +7,13 @@ import TGUIKit
 import TelegramMediaUtils
 import TelegramTheme
 import TelegramUtils
+import NagramCore
+
+// MARK: NAGRAM
+private var nagramStickerSize: NSSize {
+    let scale = CGFloat(min(max(NagramOptions.stickerScale.value, 50), 200)) / 100
+    return NSMakeSize(floor(208 * scale), floor(208 * scale))
+}
 
 public class ChatLayoutUtils: NSObject {
 
@@ -43,7 +50,7 @@ public class ChatLayoutUtils: NSObject {
             }
             if file.isWebm || file.isVideoSticker {
                 let dimensions = file.dimensions?.size
-                size = NSMakeSize(208, 208)
+                size = nagramStickerSize
                 if file.isEmojiAnimatedSticker || file.isCustomEmoji {
                     size = NSMakeSize(112, 112)
                 }
@@ -52,7 +59,7 @@ public class ChatLayoutUtils: NSObject {
                 }
             } else if file.isAnimatedSticker && !webpIsFile {
                 let dimensions = file.dimensions?.size
-                size = NSMakeSize(208, 208)
+                size = nagramStickerSize
                 if file.isEmojiAnimatedSticker || file.isCustomEmoji {
                     size = NSMakeSize(112, 112)
                 }
@@ -61,7 +68,7 @@ public class ChatLayoutUtils: NSObject {
                 }
             } else if file.isStaticSticker && !webpIsFile {
                 
-                var sz = NSMakeSize(208, 208)
+                var sz = nagramStickerSize
                 if file.fileName == "telegram-animoji.tgs" {
                     sz = NSMakeSize(112, 112)
                 }
@@ -105,6 +112,10 @@ public class ChatLayoutUtils: NSObject {
                     size.width = max(maxSize.width, size.width)
                 }
                 
+                // MARK: NAGRAM
+                if NagramOptions.smallGifs.value, file.isAnimated {
+                    size = NSMakeSize(floor(size.width * 2 / 3), floor(size.height * 2 / 3))
+                }
             } else if contentSize.height > 0 {
                 size = NSMakeSize(width, 70)
             } else if !file.previewRepresentations.isEmpty {

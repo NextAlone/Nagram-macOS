@@ -19,6 +19,7 @@ import ApiCredentials
 
 #if !SHARE
 #endif
+import NagramCore
 
 
 
@@ -540,6 +541,10 @@ final class AccountContext {
         self.engine = TelegramEngine(account: account)
         self.isSupport = isSupport
         self.isExternal = isExternal
+        // MARK: NAGRAM
+        if !isExternal {
+            NagramSettings.shared.currentAccount = account.peerId.toInt64()
+        }
         #if !SHARE
         self.mainQueueContexts = Unmanaged.passRetained(AccountMainQueueContexts(account: account, engine: self.engine))
         self.peerChannelMemberCategoriesContextsManager = PeerChannelMemberCategoriesContextsManager(self.engine, account: account)

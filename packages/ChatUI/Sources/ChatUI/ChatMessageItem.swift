@@ -23,6 +23,7 @@ import TelegramMediaUtils
 import TelegramTheme
 import TelegramUtils
 import InlineStickerLayer
+import NagramCore
 
 
 private func openCalendarWithEvent(date: Date, title: String) {
@@ -368,7 +369,8 @@ public class ChatMessageItem: ChatRowItem {
              } else {
                  spoilerColor = theme.chat.textColor(isIncoming, entry.renderType == .bubble)
              }
-             let isSpoilerRevealed = chatInteraction.presentation.interfaceState.revealedSpoilers.contains(message.id)
+             // MARK: NAGRAM
+             let isSpoilerRevealed = NagramOptions.revealSpoilers.value || chatInteraction.presentation.interfaceState.revealedSpoilers.contains(message.id)
              
              copy.removeWhitespaceFromQuoteAttribute()
 
@@ -656,6 +658,14 @@ public class ChatMessageItem: ChatRowItem {
         if webpageLayout != nil {
             return 340
         } else {
+            // MARK: NAGRAM
+            if NagramOptions.wideChannelPosts.value, NagramOptions.textMessageWidth.value == 0, let peer = chatInteraction.peer, peer.isChannel {
+                return 10000
+            }
+            let scale = NagramOptions.textMessageWidth.value
+            if scale > 0 {
+                return floor(super.min_block_width * CGFloat(min(max(scale, 50), 400)) / 100)
+            }
             return super.min_block_width
         }
     }
@@ -874,7 +884,7 @@ public class ChatMessageItem: ChatRowItem {
                 if nsString == nil {
                     nsString = text as NSString
                 }
-                string.addAttribute(NSAttributedString.Key.link, value: ChatHistoryLink.inApp(for: url as NSString, context: context, messageId: message?.id, openInfo: openInfo, hashtag: hashtag, command: botCommand,  applyProxy: applyProxy, confirm: confirm ? nsString?.substring(with: range).trimmed != url : false), range: range)
+                string.addAttribute(NSAttributedString.Key.link, value: ChatHistoryLink.inApp(for: url as NSString, context: context, messageId: message?.id, openInfo: openInfo, hashtag: hashtag, command: botCommand,  applyProxy: applyProxy, confirm: confirm && !NagramOptions.skipOpenLinkConfirm.value ? nsString?.substring(with: range).trimmed != url : false), range: range)
                 if underlineLinks {
                     string.addAttribute(NSAttributedString.Key.underlineStyle, value: true, range: range)
                 }

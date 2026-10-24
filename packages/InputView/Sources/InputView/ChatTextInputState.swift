@@ -3,6 +3,7 @@ import TGUIKit
 import TelegramCore
 import Postbox
 import SwiftSignalKit
+import NagramCore
 
 private func concatAttributes(_ attributes: [ChatTextInputAttribute]) -> [ChatTextInputAttribute] {
     guard !attributes.isEmpty else { return [] }
@@ -599,7 +600,8 @@ public final class ChatTextInputState: Codable, Equatable {
         var attributes:[ChatTextInputAttribute] = []
 
         var offsetRanges:[NSRange] = []
-        if let regex = markdownRegex {
+        // MARK: NAGRAM
+        if let regex = markdownRegex, !NagramOptions.disableAutoMarkdown.value {
 
             var skipIndexes:Set<Int> = Set()
             if !localAttributes.isEmpty {
@@ -812,7 +814,9 @@ public final class ChatTextInputState: Codable, Equatable {
             case let .italic(range):
                 entities.append(.init(range: range, type: .Italic))
             case let .pre(range, language):
-                entities.append(.init(range: range, type: .Pre(language: language)))
+                // MARK: NAGRAM
+                let defaultLanguage = NagramOptions.defaultCodeLanguage.value
+                entities.append(.init(range: range, type: .Pre(language: language ?? (defaultLanguage.isEmpty ? nil : defaultLanguage))))
             case let .code(range):
                 entities.append(.init(range: range, type: .Code))
             case let .uid(range, uid):

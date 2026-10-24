@@ -12,6 +12,7 @@ import SystemPermissions
 import TelegramUtils
 import Localization
 import TelegramContext
+import NagramCore
 
 public enum PCallResult {
     case success(PCallSession)
@@ -24,6 +25,19 @@ public func phoneCall(context: any AccountContextProtocol, peerId:PeerId, ignore
 }
 
 public func phoneCall(account: Account, sharedContext: any SharedAccountContextProtocol, window: Window?, peerId:PeerId, ignoreSame:Bool = false, isVideo: Bool = false) -> Signal<PCallResult, NoError> {
+    // MARK: NAGRAM
+    if NagramOptions.confirmPrivateCall.value, let confirmWindow = window ?? CallsCoreHooks.shared.activeWindow() {
+        return verifyAlertSignal(for: confirmWindow, information: nagramString("lng_nagram_confirm_start_call")) |> mapToSignal { result -> Signal<PCallResult, NoError> in
+            if result != nil {
+                return nagramPhoneCall(account: account, sharedContext: sharedContext, window: window, peerId: peerId, ignoreSame: ignoreSame, isVideo: isVideo)
+            }
+            return .complete()
+        }
+    }
+    return nagramPhoneCall(account: account, sharedContext: sharedContext, window: window, peerId: peerId, ignoreSame: ignoreSame, isVideo: isVideo)
+}
+
+private func nagramPhoneCall(account: Account, sharedContext: any SharedAccountContextProtocol, window: Window?, peerId:PeerId, ignoreSame:Bool, isVideo: Bool) -> Signal<PCallResult, NoError> {
     
     let alertWindow = window ?? CallsCoreHooks.shared.activeWindow()
     

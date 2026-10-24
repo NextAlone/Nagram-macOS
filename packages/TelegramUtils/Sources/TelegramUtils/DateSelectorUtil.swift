@@ -37,6 +37,15 @@ public struct DateSelectorUtil {
         return dateFormatter
     }()
     
+    // MARK: NAGRAM
+    public static let chatDateFormatterWithSeconds: DateFormatter = {
+        let dateFormatter = DateFormatter()
+        dateFormatter.timeStyle = .medium
+        dateFormatter.dateStyle = .none
+        dateFormatter.timeZone = NSTimeZone.local
+        return dateFormatter
+    }()
+
     public static let chatFullDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium

@@ -24,6 +24,7 @@
  import TelegramLinks
  import TelegramTheme
  import TelegramUtils
+import NagramCore
  
  
  
@@ -965,7 +966,8 @@
         } else {
             self.savedMessages = nil
         }
-         if peerId.namespace == Namespaces.Peer.CloudUser || peerId.namespace == Namespaces.Peer.CloudChannel, !isBot {
+         // MARK: NAGRAM
+         if peerId.namespace == Namespaces.Peer.CloudUser || peerId.namespace == Namespaces.Peer.CloudChannel, !isBot, !NagramOptions.hideProfileGifts.value {
              self.gifts = PeerMediaGiftsController(context: context, peerId: peerId, starGiftsProfile: starGiftsProfile)
         } else {
             self.gifts = nil

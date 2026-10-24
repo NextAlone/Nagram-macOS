@@ -7,6 +7,7 @@ import Localization
 import TelegramTheme
 import TelegramMediaUtils
 import TelegramUtils
+import NagramCore
 
 public extension Message {
     var replyMarkup:ReplyMarkupMessageAttribute? {
@@ -144,6 +145,10 @@ public extension Message {
         return false
     }
     func restrictedText(_ contentSettings: ContentSettings?, contentConfig: ContentSettingsConfiguration = .default) -> String? {
+        // MARK: NAGRAM
+        if NagramOptions.ignoreContentRestrictions.value {
+            return nil
+        }
         for attr in attributes {
             if let attr = attr as? RestrictedContentMessageAttribute, let contentSettings {
                 for rule in attr.rules {

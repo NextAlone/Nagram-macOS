@@ -101,7 +101,8 @@ public func canForwardMessage(_ sourceMessage: Message, chatInteraction: any Mes
     if message.adAttribute != nil {
         return false
     }
-    if message.isCopyProtected(cachedData: chatInteraction.permissionCachedData) {
+    // MARK: NAGRAM
+    if message.isServerCopyProtected(cachedData: chatInteraction.permissionCachedData) {
         return false
     }
 

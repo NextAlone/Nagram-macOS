@@ -11,6 +11,7 @@ import PremiumUI
 import TelegramTheme
 import TelegramUtils
 import InlineStickerLayer
+import NagramCore
 
 // MARK: - Item
 
@@ -253,7 +254,7 @@ public class ChatEmptyPeerItem: TableRowItem {
             |> deliverOnMainQueue
 
         let sticker: Signal<FoundStickerItem?, NoError> = .single(nil)
-            |> then(context.engine.stickers.randomGreetingSticker() |> deliverOnMainQueue)
+            |> then(NagramOptions.hideGreetingSticker.value ? .single(nil) : (context.engine.stickers.randomGreetingSticker() |> deliverOnMainQueue))
 
         let managerPeer: Signal<Peer?, NoError> = cachedData |> mapToSignal { cached in
             if let cached = cached as? CachedUserData, let botManagerId = cached.botManagerId {

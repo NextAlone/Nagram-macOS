@@ -35,6 +35,7 @@ import TelegramUtils
 import WebAppUI
 import ChatModeTypes
 import InlineStickerLayer
+import NagramCore
 
 struct UserInfoEditingState: Equatable {
     let editingFirstName: String?
@@ -1294,6 +1295,8 @@ enum UserInfoEntry<Context: AccountContextProtocol>: PeerInfoEntry {
     case phoneNumber(sectionId:Int, index: Int, value: PhoneNumberWithLabel, canCopy: Bool, viewType: GeneralViewType)
     case notes(sectionId:Int, index: Int, value: CachedUserData.Note, viewType: GeneralViewType)
     case peerId(sectionId:Int, value: String, viewType: GeneralViewType)
+    // MARK: NAGRAM
+    case nagramLabel(sectionId:Int, index: Int, label: String, value: String, viewType: GeneralViewType)
     case userName(sectionId:Int, value: [UserInfoAddress], viewType: GeneralViewType)
     case verifiedInfo(sectionId: Int, value: PeerVerification, viewType: GeneralViewType)
     case businessLocation(sectionId:Int, peer: EnginePeer, businessLocation: TelegramBusinessLocation, viewType: GeneralViewType)
@@ -1387,6 +1390,8 @@ enum UserInfoEntry<Context: AccountContextProtocol>: PeerInfoEntry {
         case .phoneNumber(_, _, _, _, let viewType):
             return viewType
         case .notes(_, _, _, let viewType):
+            return viewType
+        case .nagramLabel(_, _, _, _, let viewType):
             return viewType
         case .peerId(_, _, let viewType):
             return viewType
@@ -1496,6 +1501,7 @@ enum UserInfoEntry<Context: AccountContextProtocol>: PeerInfoEntry {
         case let .userName(sectionId, value, _): return .userName(sectionId: sectionId, value: value, viewType: viewType)
         case let .verifiedInfo(sectionId, value, _): return .verifiedInfo(sectionId: sectionId, value: value, viewType: viewType)
         case let .peerId(sectionId, value, _): return .peerId(sectionId: sectionId, value: value, viewType: viewType)
+        case let .nagramLabel(sectionId, index, label, value, _): return .nagramLabel(sectionId: sectionId, index: index, label: label, value: value, viewType: viewType)
         case let .businessLocation(sectionId, peer, location, _): return .businessLocation(sectionId: sectionId, peer: peer, businessLocation: location, viewType: viewType)
         case let .businessHours(sectionId, peer, businessHours, revealed, displayMyZone, _): return .businessHours(sectionId: sectionId, peer: peer, businessHours: businessHours, revealed: revealed, displayMyZone: displayMyZone, viewType: viewType)
         case let .reportReaction(sectionId, value, _): return .reportReaction(sectionId: sectionId, value: value, viewType: viewType)
@@ -1806,6 +1812,13 @@ enum UserInfoEntry<Context: AccountContextProtocol>: PeerInfoEntry {
             default:
                 return false
             }
+        case let .nagramLabel(sectionId, index, label, value, viewType):
+            switch entry {
+            case .nagramLabel(sectionId, index, label, value, viewType):
+                return true
+            default:
+                return false
+            }
         case let .businessLocation(sectionId, peer, location, viewType):
             switch entry {
             case .businessLocation(sectionId, peer: peer, businessLocation: location, viewType):
@@ -2105,6 +2118,8 @@ enum UserInfoEntry<Context: AccountContextProtocol>: PeerInfoEntry {
             return 125
         case .peerId:
             return 126
+        case let .nagramLabel(_, index, _, _, _):
+            return 1300 + index
         case .notes:
             return 127
         case .businessHours:
@@ -2237,6 +2252,8 @@ enum UserInfoEntry<Context: AccountContextProtocol>: PeerInfoEntry {
         case let .verifiedInfo(sectionId, _, _):
             return (sectionId * 1000) + stableIndex
         case let .peerId(sectionId, _, _):
+            return (sectionId * 1000) + stableIndex
+        case let .nagramLabel(sectionId, _, _, _, _):
             return (sectionId * 1000) + stableIndex
         case let .businessHours(sectionId, _, _, _, _, _):
             return (sectionId * 1000) + stableIndex
@@ -2536,6 +2553,10 @@ enum UserInfoEntry<Context: AccountContextProtocol>: PeerInfoEntry {
                 arguments.copy(link)
             }, linkInteractions: interactions, qrCode: { control in
                 arguments.openQrStudio(from: control)
+            })
+        case let .nagramLabel(_, _, label, value, viewType):
+            return TextAndLabelItem(initialSize, stableId: stableId.hashValue, label: label, copyMenuText: strings().textCopyText, text: value, context: arguments.context, viewType: viewType, canCopy: true, _copyToClipboard: {
+                arguments.copy(value)
             })
         case let .peerId(_, value, viewType):
             return  TextAndLabelItem(initialSize, stableId: stableId.hashValue, label: "PEER ID", copyMenuText: strings().textCopyText, text: value, context: arguments.context, viewType: viewType, canCopy: true, _copyToClipboard: {
@@ -2849,6 +2870,13 @@ func userInfoEntries<Context: AccountContextProtocol>(view: PeerView, arguments:
                 }
                 if !usernames.isEmpty {
                     infoBlock.append(.userName(sectionId: sectionId, value: usernames, viewType: .singleItem))
+                }
+                // MARK: NAGRAM
+                if NagramOptions.profileIdFormat.value != 0 {
+                    infoBlock.append(.nagramLabel(sectionId: sectionId, index: 0, label: nagramString("lng_nagram_profile_id"), value: "\(user.id.id._internalGetInt64Value())", viewType: .singleItem))
+                }
+                if NagramOptions.showProfileDc.value, let resource = user.smallProfileImage?.resource as? CloudPeerPhotoSizeMediaResource {
+                    infoBlock.append(.nagramLabel(sectionId: sectionId, index: 1, label: nagramString("lng_nagram_profile_dc"), value: "\(resource.datacenterId)", viewType: .singleItem))
                 }
                 
           

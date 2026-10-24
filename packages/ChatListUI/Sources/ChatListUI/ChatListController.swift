@@ -22,6 +22,7 @@ import ChatUI
 import ChatModeTypes
 import InlineStickerLayer
 import InputDataUI
+import NagramCore
 
 private final class Arguments {
     let context: any AccountContextProtocol
@@ -698,6 +699,19 @@ public struct FilterData : Equatable {
 }
 
 
+// MARK: NAGRAM
+private func nagramStartupFolderId() -> Int32? {
+    let account = NagramSettings.shared.currentAccount
+    switch NagramOptions.startupFolderMode.value(account: account) {
+    case 1:
+        return Int32(NagramOptions.lastOpenedFolderId.value(account: account))
+    case 2:
+        return Int32(NagramOptions.startupFolderId.value(account: account))
+    default:
+        return nil
+    }
+}
+
 public class ChatListController<Context: AccountContextProtocol> : PeersListController<Context>, ChatListControllerKind {
     
     private let folderUpdatesDisposable = MetaDisposable()
@@ -705,6 +719,10 @@ public class ChatListController<Context: AccountContextProtocol> : PeersListCont
     public func updateFilter(_ f:(FilterData)->FilterData) {
         
         let data = f(stateValue.with { $0.filterData })
+        // MARK: NAGRAM
+        if NagramOptions.startupFolderMode.value(account: context.peerId.toInt64()) == 1 {
+            NagramOptions.lastOpenedFolderId.set(Int(ChatListUIHooks.shared.chatListFilterId(data.filter)), account: context.peerId.toInt64())
+        }
         
         if !context.isPremium {
             if let index = data.tabs.firstIndex(of: data.filter) {
@@ -931,7 +949,8 @@ public class ChatListController<Context: AccountContextProtocol> : PeersListCont
 
         
         let storyState: Signal<EngineStorySubscriptions?, NoError>
-        if self.mode.groupId == .root {
+        // MARK: NAGRAM
+        if self.mode.groupId == .root, !NagramOptions.hideStories.value {
             storyState = context.engine.messages.storySubscriptions(isHidden: true) |> map(Optional.init)
         } else {
             storyState = .single(nil)
@@ -1004,8 +1023,9 @@ public class ChatListController<Context: AccountContextProtocol> : PeersListCont
             let hiddenItems: PeerListHiddenItems = state.hiddenItems
             
             if !update.list.hasLater, case .allChats = filterData.filter {
+                // MARK: NAGRAM
                 let items = update.list.additionalItems.filter {
-                    !hiddenItems.promo.contains($0.item.renderedPeer.peerId)
+                    !hiddenItems.promo.contains($0.item.renderedPeer.peerId) && !NagramOptions.hideProxySponsor.value
                 }
                 for (i, current) in items.enumerated() {
                     prepare.append((current.item, UIChatAdditionalItem(item: current, index: i + update.list.groupItems.count)))
@@ -1073,7 +1093,8 @@ public class ChatListController<Context: AccountContextProtocol> : PeersListCont
                 additionItems.append(.custom(UICrashReportAction(card: crashReportCard)))
             }
             if state.mode == .plain, !update.list.hasLater, state.splitState != .minimisize, state.filterData.filter == .allChats, state.forumPeer == nil {
-                if suggestions.contains(where: { $0 == .starsSubscriptionLowBalance }), let missingBalanceState {
+                // MARK: NAGRAM
+                if suggestions.contains(where: { $0 == .starsSubscriptionLowBalance }), !NagramOptions.hidePremiumPromotions.value, let missingBalanceState {
                     if missingBalanceState.balance.value > 0, !missingBalanceState.subscriptions.isEmpty {
                         additionItems.append(.custom(UIChatListBuyStarsAction(context: context, state: missingBalanceState)))
                     }
@@ -1092,12 +1113,14 @@ public class ChatListController<Context: AccountContextProtocol> : PeersListCont
             }
             
             if state.mode == .plain, !update.list.hasLater, state.splitState != .minimisize, state.filterData.filter == .allChats, state.forumPeer == nil {
-                if suggestions.contains(.gracePremium) {
+                // MARK: NAGRAM
+                if suggestions.contains(.gracePremium), !NagramOptions.hidePremiumPromotions.value {
                     additionItems.append(.grace(true))
                 }
             }
                         
-            if state.mode == .plain, !update.list.hasLater, state.splitState != .minimisize, state.filterData.filter == .allChats, state.forumPeer == nil {
+            // MARK: NAGRAM
+            if state.mode == .plain, !update.list.hasLater, state.splitState != .minimisize, state.filterData.filter == .allChats, state.forumPeer == nil, !NagramOptions.hideBirthdaySuggestions.value {
                 if suggestions.contains(.setupBirthday), myBirthday == nil {
                     additionItems.append(.birthdays([]))
                 } else {
@@ -1315,6 +1338,9 @@ public class ChatListController<Context: AccountContextProtocol> : PeersListCont
                         .withUpdatedSidebar(filters.sidebar)
                         .withUpdatedShowTags(filters.showTags)
                     if !first, let updated = filters.list.first(where: { ChatListUIHooks.shared.chatListFilterId($0) == ChatListUIHooks.shared.chatListFilterId(current.filter) }) {
+                        current = current.withUpdatedFilter(updated)
+                    } else if first, let startup = nagramStartupFolderId(), let updated = filters.list.first(where: { ChatListUIHooks.shared.chatListFilterId($0) == startup }) {
+                        // MARK: NAGRAM
                         current = current.withUpdatedFilter(updated)
                     } else {
                         current = current.withUpdatedFilter(nil)

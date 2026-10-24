@@ -21,6 +21,7 @@ import ChatModeTypes
 import Cocoa
 import InlineStickerLayer
 import ObjcUtils
+import NagramCore
 
 
 // https://getemoji.com/ to get the latest list
@@ -2558,9 +2559,10 @@ public final class EmojiesController<Context: AccountContextProtocol> : Telegram
         
         let peer = getPeerView(peerId: context.peerId, postbox: context.account.postbox)
         
-        let featured: Signal<[FeaturedStickerPackItem], NoError> = context.account.viewTracker.featuredEmojiPacks() |> map {
+        // MARK: NAGRAM
+        let featured: Signal<[FeaturedStickerPackItem], NoError> = NagramOptions.hideRecommendedEmoji.value ? .single([]) : (context.account.viewTracker.featuredEmojiPacks() |> map {
             Array($0.prefix(5))
-        } |> take(1) |> then(context.account.viewTracker.featuredEmojiPacks() |> delay(1.0, queue: prepareQueue))
+        } |> take(1) |> then(context.account.viewTracker.featuredEmojiPacks() |> delay(1.0, queue: prepareQueue)))
         
 
         switch mode {

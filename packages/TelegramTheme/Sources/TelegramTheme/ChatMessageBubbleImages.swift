@@ -1,5 +1,6 @@
 import Cocoa
 import TGUIKit
+import NagramCore
 
 public enum MessageBubbleImageNeighbors: Hashable {
     case none
@@ -10,8 +11,13 @@ public enum MessageBubbleImageNeighbors: Hashable {
     case extracted
 }
 
-let messageBubbleMainRadius: CGFloat = 16.0
-let messageBubbleAuxiliaryRadius: CGFloat = 8.0
+// MARK: NAGRAM
+private let nagramBubbleScale: CGFloat = {
+    let value = NagramOptions.bubbleRoundness.value
+    return value > 0 ? CGFloat(min(max(value, 10), 100)) / 100.0 : 1.0
+}()
+let messageBubbleMainRadius: CGFloat = max(2.0, floor(16.0 * nagramBubbleScale))
+let messageBubbleAuxiliaryRadius: CGFloat = max(2.0, floor(8.0 * nagramBubbleScale))
 let messageBubbleTailWidth: CGFloat = 6.0
 let messageBubbleDiameter: CGFloat = 32.0
 
@@ -73,7 +79,8 @@ func messageBubbleArguments(maxCornerRadius: CGFloat, minCornerRadius: CGFloat, 
         bottomLeftRadius = tmp
     }
 
-    return (topLeftRadius, topRightRadius, bottomLeftRadius, bottomRightRadius, drawTail)
+    // MARK: NAGRAM
+    return (topLeftRadius, topRightRadius, bottomLeftRadius, bottomRightRadius, drawTail && !NagramOptions.hideBubbleTail.value)
 }
 
 public func messageBubbleCorners(incoming: Bool, neighbors: MessageBubbleImageNeighbors, inset: CGFloat) -> ImageCorners {

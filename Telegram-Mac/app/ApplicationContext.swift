@@ -16,6 +16,7 @@ import PrivateCallScreen
 import DetectSpeech
 import WalletContext
 import AppKit
+import NagramCore
 
 
 /// Opens a community — a container peer, not a conversation — as its chat list in the left controller.
@@ -463,7 +464,9 @@ final class AuthorizedApplicationContext: NSObject, SplitViewDelegate {
                 return EntertainmentViewController.init(size: NSZeroSize, context: context)
             }
             if self.entertainment == nil {
-                self.entertainment = EntertainmentViewController(size: NSMakeSize(350, 350), context: self.context)
+                // MARK: NAGRAM
+                let nagramScale = CGFloat(min(max(NagramOptions.stickerPanelScale.value, 50), 200)) / 100
+                self.entertainment = EntertainmentViewController(size: NSMakeSize(floor(350 * nagramScale), floor(350 * nagramScale)), context: self.context)
             }
             return self.entertainment!
         }, switchSplitLayout: { [weak self] state in

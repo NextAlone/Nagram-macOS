@@ -18,6 +18,7 @@ let package = Package(
         .package(name: "InputView", path: "../InputView"),
         .package(name: "LocalAnimations", path: "../LocalAnimations"),
         .package(name: "SSignalKit", path: "../../submodules/telegram-ios/submodules/SSignalKit"),
+        .package(name: "NagramCore", path: "../NagramCore"),
         .package(name: "TelegramCore", path: "../../submodules/telegram-ios/submodules/TelegramCore"),
         .package(name: "Postbox", path: "../../submodules/telegram-ios/submodules/Postbox")
     ],
@@ -34,6 +35,7 @@ let package = Package(
             .product(name: "InputView", package: "InputView"),
             .product(name: "LocalAnimations", package: "LocalAnimations"),
             .product(name: "SwiftSignalKit", package: "SSignalKit"),
+    .product(name: "NagramCore", package: "NagramCore", condition: nil),
             .product(name: "TelegramCore", package: "TelegramCore"),
             .product(name: "Postbox", package: "Postbox")
         ]),

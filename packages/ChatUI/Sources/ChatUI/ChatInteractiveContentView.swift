@@ -16,6 +16,7 @@ import ColorPalette
 import MessageUtils
 import FoundationUtils
 import InlineMediaGrid
+import NagramCore
 
 extension AutoremoveTimeoutMessageAttribute : @retroactive Equatable {
     public static func == (lhs: AutoremoveTimeoutMessageAttribute, rhs: AutoremoveTimeoutMessageAttribute) -> Bool {
@@ -994,7 +995,8 @@ public class ChatInteractiveContentView: ChatMediaContentView {
         
         let isSensitive: Bool
         if let parent = parent {
-            isSensitive = parent.isSensitiveContent(platform: "ios") && !context.contentConfig.sensitiveContentEnabled
+            // MARK: NAGRAM
+            isSensitive = parent.isSensitiveContent(platform: "ios") && !context.contentConfig.sensitiveContentEnabled && !(NagramOptions.skipSensitiveWarning.value && context.contentConfig.canAdjustSensitiveContent)
         } else {
             isSensitive = false
         }

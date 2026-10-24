@@ -918,6 +918,8 @@
 		D48F2B4F431948C6A001328C /* InactiveChannelsUI in Frameworks */ = {isa = PBXBuildFile; productRef = 3DB8EBB382994860A7329BE8 /* InactiveChannelsUI */; };
 		1ADD8BCCDC6049B68CE86BFE /* SimilarPeersHooksInstall.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4793112A0E44048B603D019 /* SimilarPeersHooksInstall.swift */; };
 		53C2655B791449A18A453BBD /* GroupsInCommonUI in Frameworks */ = {isa = PBXBuildFile; productRef = 8C849FFE3CF443CEAAFD9A65 /* GroupsInCommonUI */; };
+		8101F1410ADBAF3BED77B096 /* NagramUI in Frameworks */ = {isa = PBXBuildFile; productRef = 0BDEA3833ABBDC42B8FBAAD6 /* NagramUI */; };
+		C9F7323BE4D36B998F6B8E0A /* NagramCore in Frameworks */ = {isa = PBXBuildFile; productRef = E9E048487A47A7FF992932B9 /* NagramCore */; };
 		5105D43394A54BCB8773E53C /* QrStudioUI in Frameworks */ = {isa = PBXBuildFile; productRef = 019B2BAFB79C48F1A4A5666E /* QrStudioUI */; };
 		7110771E0000000000000004 /* TLottie in Frameworks */ = {isa = PBXBuildFile; productRef = 7110771E0000000000000002 /* TLottie */; };
 		7110771E0000000000000005 /* TLottie in Frameworks */ = {isa = PBXBuildFile; productRef = 7110771E0000000000000003 /* TLottie */; };
@@ -1955,6 +1957,8 @@
 		0F608853A24F468E98DBF2D8 /* InactiveChannelsUI */ = {isa = PBXFileReference; lastKnownFileType = folder; name = InactiveChannelsUI; path = packages/InactiveChannelsUI; sourceTree = "<group>"; };
 		C4793112A0E44048B603D019 /* SimilarPeersHooksInstall.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SimilarPeersHooksInstall.swift; sourceTree = "<group>"; };
 		2382F66FCB03472CB031B1D7 /* GroupsInCommonUI */ = {isa = PBXFileReference; lastKnownFileType = folder; name = GroupsInCommonUI; path = packages/GroupsInCommonUI; sourceTree = "<group>"; };
+		A561CD320A8A957AD71DFB82 /* NagramUI */ = {isa = PBXFileReference; lastKnownFileType = folder; name = NagramUI; path = packages/NagramUI; sourceTree = "<group>"; };
+		908E26BDB1B849178D5E80B6 /* NagramCore */ = {isa = PBXFileReference; lastKnownFileType = folder; name = NagramCore; path = packages/NagramCore; sourceTree = "<group>"; };
 		3735CDD1DC42418CBDF358F5 /* QrStudioUI */ = {isa = PBXFileReference; lastKnownFileType = folder; name = QrStudioUI; path = packages/QrStudioUI; sourceTree = "<group>"; };
 		7110771E0000000000000001 /* TLottie */ = {isa = PBXFileReference; lastKnownFileType = folder; name = TLottie; path = packages/TLottie; sourceTree = "<group>"; };
 		2314496AC5714CD1BDBAF6C8 /* CrashRecoveryUI */ = {isa = PBXFileReference; lastKnownFileType = folder; name = CrashRecoveryUI; path = packages/CrashRecoveryUI; sourceTree = "<group>"; };
@@ -2087,6 +2091,8 @@
 				07EDD2B662264351B2D102DE /* EditTagLabelUI in Frameworks */,
 				7BE4259A2C3D4D73BBBC2302 /* SelectCountryUI in Frameworks */,
 				53C2655B791449A18A453BBD /* GroupsInCommonUI in Frameworks */,
+				8101F1410ADBAF3BED77B096 /* NagramUI in Frameworks */,
+				C9F7323BE4D36B998F6B8E0A /* NagramCore in Frameworks */,
 				5105D43394A54BCB8773E53C /* QrStudioUI in Frameworks */,
 				B2011E3EB7D84C48A0B9509D /* CrashRecoveryUI in Frameworks */,
 				E9E2F04E0D564351A4C88842 /* CrashReports in Frameworks */,
@@ -2766,6 +2772,8 @@
 				F70986F290D0462F9CEF770F /* EditTagLabelUI */,
 				447E693028674930A9722A3F /* SelectCountryUI */,
 				2382F66FCB03472CB031B1D7 /* GroupsInCommonUI */,
+				A561CD320A8A957AD71DFB82 /* NagramUI */,
+				908E26BDB1B849178D5E80B6 /* NagramCore */,
 				3735CDD1DC42418CBDF358F5 /* QrStudioUI */,
 				7110771E0000000000000001 /* TLottie */,
 				2314496AC5714CD1BDBAF6C8 /* CrashRecoveryUI */,
@@ -3716,6 +3724,8 @@
 				7C9B791DE6E3430FADA989DF /* EditTagLabelUI */,
 				857E4375FE0F41E9A737B925 /* SelectCountryUI */,
 				8C849FFE3CF443CEAAFD9A65 /* GroupsInCommonUI */,
+				0BDEA3833ABBDC42B8FBAAD6 /* NagramUI */,
+				E9E048487A47A7FF992932B9 /* NagramCore */,
 				019B2BAFB79C48F1A4A5666E /* QrStudioUI */,
 				7110771E0000000000000002 /* TLottie */,
 				A49FDE6EE2CE45CC94854F90 /* CrashRecoveryUI */,
@@ -5953,6 +5963,14 @@
 		7110771E0000000000000003 /* TLottie */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = TLottie;
+		};
+		E9E048487A47A7FF992932B9 /* NagramCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = NagramCore;
+		};
+		0BDEA3833ABBDC42B8FBAAD6 /* NagramUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = NagramUI;
 		};
 		8C849FFE3CF443CEAAFD9A65 /* GroupsInCommonUI */ = {
 			isa = XCSwiftPackageProductDependency;

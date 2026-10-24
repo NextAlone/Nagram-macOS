@@ -8,6 +8,7 @@ import InAppSettings
 import TelegramContext
 import TelegramTheme
 import ColorPalette
+import NagramCore
 
 
 
@@ -194,8 +195,10 @@ public class GlobalBadgeNode: Node {
                 }
                 strongSelf.layoutChanged?()
                 
-                if dockTile, NSApplication.shared.dockTile.badgeLabel != result.dockText {
-                    NSApplication.shared.dockTile.badgeLabel = result.dockText
+                // MARK: NAGRAM
+                let dockText = NagramOptions.hideAppIconBadge.value ? nil : result.dockText
+                if dockTile, NSApplication.shared.dockTile.badgeLabel != dockText {
+                    NSApplication.shared.dockTile.badgeLabel = dockText
                     forceUpdateStatusBarIconByDockTile(sharedContext: sharedContext)
                 }
             }

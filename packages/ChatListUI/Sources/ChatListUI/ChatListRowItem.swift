@@ -24,6 +24,7 @@ import ChatUI
 import ChatHistoryModel
 import ChatModeTypes
 import InlineStickerLayer
+import NagramCore
 
 
 public class ChatListTags {
@@ -137,6 +138,19 @@ func chatListHasUnreadIncomingGramTransfer(_ messages: [Message], readState: Eng
 
 func chatListGramBadgeHidesUnreadCounter(hasGramBadge: Bool, unreadCount: Int32?) -> Bool {
     return hasGramBadge && unreadCount == 1
+}
+
+// MARK: NAGRAM
+private func nagramPreviewLines(_ fallback: Int32) -> Int32 {
+    let value = NagramOptions.chatPreviewLines.value
+    return value == 1 ? 1 : fallback
+}
+
+private func nagramMessageListDate(_ time: Int32) -> String {
+    if NagramOptions.secondsInChatList.value, Calendar.current.isDateInToday(Date(timeIntervalSince1970: TimeInterval(time))) {
+        return DateSelectorUtil.chatDateFormatterWithSeconds.string(from: Date(timeIntervalSince1970: TimeInterval(time)))
+    }
+    return DateUtils.string(forMessageListDate: time)
 }
 
 public class ChatListRowItem: TableRowItem {
@@ -564,7 +578,8 @@ public class ChatListRowItem: TableRowItem {
             let date:NSMutableAttributedString = NSMutableAttributedString()
             var time:TimeInterval = TimeInterval(message.timestamp)
             time -= context.timeDifference
-            let range = date.append(string: DateUtils.string(forMessageListDate: Int32(time)), color: theme.colors.grayText, font: .normal(.short))
+            // MARK: NAGRAM
+            let range = date.append(string: nagramMessageListDate(Int32(time)), color: theme.colors.grayText, font: .normal(.short))
             date.setSelected(color: theme.colors.underSelectedColor,range: range)
 
             self.dateLayout = TextViewLayout(date, mayItems: false)
@@ -625,10 +640,11 @@ public class ChatListRowItem: TableRowItem {
             messageText = .initialize(string: strings().chatListArchiveStoryCountOther(storyState.items.count), color: theme.chatList.grayTextColor, font: .normal(.text))
         }
         
-        if let messageText = messageText.trimmed.mutableCopy() as? NSMutableAttributedString, !messageText.string
+        // MARK: NAGRAM
+        if !NagramOptions.hideSavedAndArchivedPreviews.value, let messageText = messageText.trimmed.mutableCopy() as? NSMutableAttributedString, !messageText.string
             .isEmpty {
-            self.messageLayout = .init(messageText, maximumNumberOfLines: 2)
-            self.messageSelectedMaxLines = 2
+            self.messageLayout = .init(messageText, maximumNumberOfLines: nagramPreviewLines(2))
+            self.messageSelectedMaxLines = nagramPreviewLines(2)
             self.messageSelectedCutout = nil
         }
 
@@ -956,7 +972,8 @@ public class ChatListRowItem: TableRowItem {
             let date:NSMutableAttributedString = NSMutableAttributedString()
             var time:TimeInterval = TimeInterval(message.timestamp)
             time -= context.timeDifference
-            let range = date.append(string: DateUtils.string(forMessageListDate: Int32(time)), color: theme.colors.grayText, font: .normal(.short))
+            // MARK: NAGRAM
+            let range = date.append(string: nagramMessageListDate(Int32(time)), color: theme.colors.grayText, font: .normal(.short))
             date.setSelected(color: theme.colors.underSelectedColor, range: range)
 
             self.dateLayout = TextViewLayout(date, mayItems: false)
@@ -1163,10 +1180,12 @@ public class ChatListRowItem: TableRowItem {
                     textCutout = TextViewCutout(topLeft: CGSize(width: textLeftCutout, height: 14))
                 }
             }
-            if let messageText = messageText?.trimmed, !messageText.string.isEmpty {
-                self.messageLayout = .init(messageText, maximumNumberOfLines: chatNameLayout != nil || tags != nil ? 1 : 2, cutout: textCutout)
+            // MARK: NAGRAM
+            let nagramHidePreview = (NagramOptions.hideSavedAndArchivedPreviews.value && message?.id.peerId == context.peerId) || NagramOptions.demoMode.value
+            if !nagramHidePreview, let messageText = messageText?.trimmed, !messageText.string.isEmpty {
+                self.messageLayout = .init(messageText, maximumNumberOfLines: chatNameLayout != nil || tags != nil ? 1 : nagramPreviewLines(2), cutout: textCutout)
                 
-                self.messageSelectedMaxLines = chatNameLayout != nil || tags != nil ? 1 : 2
+                self.messageSelectedMaxLines = chatNameLayout != nil || tags != nil ? 1 : nagramPreviewLines(2)
                 self.messageSelectedCutout = textCutout
             }
         }

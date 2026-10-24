@@ -36,6 +36,7 @@ import TelegramTheme
 import TelegramUtils
 import Strings
 import InputView
+import NagramCore
 
 
 private func calculateAdjustedPoint(for point: CGPoint,
@@ -1258,7 +1259,8 @@ public class ChatControllerView : View, ChatInputDelegate {
         } else if interfaceState.searchMode.inSearch {
             var tags: [EmojiTag]? = nil
             
-            if let savedMessageTags = interfaceState.savedMessageTags {
+            // MARK: NAGRAM
+            if let savedMessageTags = interfaceState.savedMessageTags, !NagramOptions.hideSavedTags.value {
                 if interfaceState.accountPeer?.isPremium == false || !savedMessageTags.tags.isEmpty, chatInteraction.peerId == chatInteraction.interactionContext.peerId {
                     tags = []
                 }
@@ -1316,7 +1318,7 @@ public class ChatControllerView : View, ChatInputDelegate {
             } else if settings.contains(.canReport) {
                 let isUser = interfaceState.peer?.isUser == true
                 value = .report(autoArchived: settings.contains(.autoArchived), status: isUser ? interfaceState.peer?.emojiStatus : nil)
-            } else if settings.contains(.canShareContact) {
+            } else if settings.contains(.canShareContact), !NagramOptions.hideSharePhonePrompt.value {
                 value = .shareInfo
             } else if let pinnedMessageId = interfaceState.pinnedMessageId, !interfaceState.interfaceState.dismissedPinnedMessageId.contains(pinnedMessageId.messageId), !interfaceState.hidePinnedMessage, interfaceState.chatMode != .pinned {
                 
@@ -2437,6 +2439,27 @@ private enum ChatPlayEffectTarget {
     case effect
 }
 
+// MARK: NAGRAM
+private func nagramIgnoresChatTheme(_ view: PeerView?) -> Bool {
+    if NagramOptions.ignoreChatTheme.value {
+        return true
+    }
+    guard let view = view else {
+        return false
+    }
+    switch view.peerId.namespace {
+    case Namespaces.Peer.CloudUser, Namespaces.Peer.SecretChat:
+        return NagramOptions.ignorePrivateChatTheme.value
+    case Namespaces.Peer.CloudChannel:
+        if let peer = view.peers[view.peerId], peer.isChannel {
+            return NagramOptions.ignoreChannelChatTheme.value
+        }
+        return false
+    default:
+        return false
+    }
+}
+
 open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewController<ChatControllerView, Context>, Notifable, TableViewDelegate, ChatControllerKind, ChatInterfaceController {
     private enum WallpaperResult : Equatable {
         case result(Wallpaper?)
@@ -2692,6 +2715,16 @@ open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewC
     
     private var contextQueryState: (ChatPresentationInputQuery?, Disposable)?
     private var urlPreviewQueryState: (String?, Disposable)?
+    // MARK: NAGRAM
+    private var nagramPreviewDefaultedUrl: String?
+
+    fileprivate func nagramApplyPreviewDefault(_ state: ChatPresentationInterfaceState, _ url: String) -> ChatPresentationInterfaceState {
+        guard NagramOptions.disableLinkPreview.value, state.interfaceState.editState == nil, nagramPreviewDefaultedUrl != url else {
+            return state
+        }
+        nagramPreviewDefaultedUrl = url
+        return state.updatedInterfaceState { $0.withUpdatedComposeDisableUrlPreview(url) }
+    }
 
     
     let layoutDisposable:MetaDisposable = MetaDisposable()
@@ -3733,8 +3766,12 @@ open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewC
         
         
         
-        let themeEmoticon: Signal<ChatTheme?, NoError> = self.peerView.get() |> map {
-            ($0 as? PeerView)?.cachedData
+        // MARK: NAGRAM
+        let themeEmoticon: Signal<ChatTheme?, NoError> = self.peerView.get() |> map { view -> CachedPeerData? in
+            if nagramIgnoresChatTheme(view as? PeerView) {
+                return nil
+            }
+            return (view as? PeerView)?.cachedData
         } |> map { cachedData in
             var chatTheme: ChatTheme? = nil
             if let cachedData = cachedData as? CachedUserData {
@@ -3760,7 +3797,8 @@ open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewC
                     return WallpaperTuple(wallpaper.uiWallpaper(), appearance)
                 }
             }
-            if let peerView = peerView as? PeerView {
+            // MARK: NAGRAM
+            if let peerView = peerView as? PeerView, !nagramIgnoresChatTheme(peerView) {
                 
                 var wallpaper: TelegramWallpaper?
                 var chatTheme: ChatTheme?
@@ -3880,7 +3918,8 @@ open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewC
         }
         
         let recommendedChannels: Signal<RecommendedChannels?, NoError>
-        if peerId.namespace == Namespaces.Peer.CloudChannel {
+        // MARK: NAGRAM
+        if peerId.namespace == Namespaces.Peer.CloudChannel, !NagramOptions.hideRecommendedChannels.value {
             recommendedChannels = context.engine.peers.recommendedChannels(peerId: peerId)
         } else {
             recommendedChannels = .single(nil)
@@ -4084,6 +4123,7 @@ open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewC
         })
 
         let previousHistoryViewUpdateId = Atomic<Int?>(value: nil)
+        // MARK: NAGRAM
         let historyViewTransition = combineLatest(queue: queue,
                                                   historyViewUpdate,
                                                   appearanceSignal,
@@ -4099,7 +4139,7 @@ open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewC
                                                   reactions,
                                                   historyUiState,
                                                   historyPeerView,
-                                                  recommendedChannels
+                                                  combineLatest(recommendedChannels, Signal<Void, NoError>.single(Void()) |> then(NagramSettings.shared.signal(flags: [.refreshMessageView]))) |> map { $0.0 }
     ) |> mapToQueue { update, appearance, maxReadIndex, searchState, animatedEmojiStickers, messageEffects, savedMessageTags, customChannelDiscussionReadState, customThreadOutgoingReadState, updatingMedia, adMessages, reactions, uiState, peerView, recommendedChannels -> Signal<(TableUpdateTransition, MessageHistoryView?, ChatHistoryCombinedInitialData, Bool, ChatHistoryView), NoError> in
                                     
             let pollAnswersLoading = uiState.pollAnswers
@@ -4617,7 +4657,8 @@ open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewC
             let chatInteraction = self.chatInteraction
             let presentation = chatInteraction.presentation
 
-            let inputState = state.inputState.subInputState(from: NSMakeRange(0, state.inputState.inputText.length))
+            // MARK: NAGRAM
+            let inputState = state.inputState.subInputState(from: NSMakeRange(0, state.inputState.inputText.length)).nagramTransformed(editing: true)
 
             let text = inputState.inputText.trimmed
             if text.length > chatInteraction.maxInputCharacters {
@@ -4875,7 +4916,8 @@ open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewC
                                     }) |> mapToSignal { [weak controller] messages, peer -> Signal<Never, NoError> in
                                         guard let controller else { return .complete() }
                                         startSending()
-                                        return (makeTextSignal() |> then(deferred {
+                                        // MARK: NAGRAM
+                                        let nagramForward: Signal<Never, NoError> = deferred {
                                             if messages.count != fwdIds.count {
                                             }
                                             let errors:[String] = messages.compactMap { message in
@@ -4900,7 +4942,11 @@ open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewC
 
                                             return Sender.forwardMessages(messageIds: messages.map { $0.id }, context: context, peerId: destinationPeerId, replyId: destinationReply, threadId: destinationThreadId, hideNames: hideNames, hideCaptions: hideCaptions, silent: silent, atDate: atDate, sendAsPeerId: currentSendAsPeerId) |> afterNext { ids in
                                             } |> ignoreValues
-                                        }))
+                                        }
+                                        if NagramOptions.forwardBeforeComment.value {
+                                            return nagramForward |> then(makeTextSignal())
+                                        }
+                                        return makeTextSignal() |> then(nagramForward)
                                     }
 
                                 } else {
@@ -5265,6 +5311,11 @@ open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewC
             guard let strongSelf = self, let peer = strongSelf.chatInteraction.presentation.peer else {
                 return
             }
+            // MARK: NAGRAM
+            if NagramOptions.botCommandsToDraft.value, text.hasPrefix("/") {
+                strongSelf.chatInteraction.updateInput(with: text + " ")
+                return
+            }
             let destination = makePeerId()
             guard peer.canSendMessage(strongSelf.mode.isThreadMode, threadData: strongSelf.chatInteraction.presentation.threadInfo, cachedData: strongSelf.chatInteraction.presentation.cachedData) else {
                 return
@@ -5276,8 +5327,18 @@ open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewC
             })
         }
 
-        chatInteraction.hashtag = { hashtag in
-            context.bindings.globalSearch(hashtag, peerId, nil)
+        chatInteraction.hashtag = { [weak self] hashtag in
+            // MARK: NAGRAM
+            let isBroadcast = self?.chatInteraction.peer?.isChannel ?? false
+            let mode = isBroadcast ? NagramOptions.hashtagSearchPageChannel.value : NagramOptions.hashtagSearchPageChat.value
+            switch mode {
+            case 1:
+                self?.chatInteraction.update { $0.updatedSearchMode(.init(inSearch: true, query: hashtag)) }
+            case 2:
+                context.bindings.globalSearch(hashtag, nil, nil)
+            default:
+                context.bindings.globalSearch(hashtag, peerId, nil)
+            }
         }
         
         chatInteraction.sendLocation = { [weak self] coordinate, venue in
@@ -5659,6 +5720,17 @@ open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewC
             ChatUIHooks.shared.showInlineAudioPlayer(controller, context, self?.genericView.tableView)
         }
         
+        // MARK: NAGRAM
+        chatInteraction.nagramLoadedMessages = { [weak self] in
+            var result: [Message] = []
+            self?.genericView.tableView.enumerateItems(with: { item in
+                if let item = item as? ChatRowItem {
+                    result.append(contentsOf: item.messages)
+                }
+                return true
+            })
+            return result
+        }
         chatInteraction.searchPeerMessages = { [weak self] peer in
             guard let `self` = self else { return }
             self.chatInteraction.update({ current in
@@ -6813,6 +6885,22 @@ open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewC
                 let chatInteraction = strongSelf.chatInteraction
                 let presentation = chatInteraction.presentation
                 let messagesCount = 1
+                
+                // MARK: NAGRAM
+                let nagramConfirm: String?
+                if NagramOptions.confirmSticker.value, file.isSticker || file.isAnimatedSticker || file.isVideoSticker {
+                    nagramConfirm = nagramString("lng_nagram_confirm_send_sticker")
+                } else if NagramOptions.confirmGif.value, file.isAnimated, !file.isSticker {
+                    nagramConfirm = nagramString("lng_nagram_confirm_send_gif")
+                } else {
+                    nagramConfirm = nil
+                }
+                if let nagramConfirm, presentation.sendPaidMessageStars == nil {
+                    verifyAlert(for: chatInteraction.interactionContext.window, information: nagramConfirm, successHandler: { _ in
+                        invoke()
+                    })
+                    return
+                }
                 
                 if let payStars = presentation.sendPaidMessageStars, let peer = presentation.peer, let starsState = presentation.starsState {
                     let starsPrice = Int(payStars.value * Int64(messagesCount))
@@ -8884,6 +8972,8 @@ open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewC
             }
             |> deliverOnMainQueue).start(next: { [weak self] activities in
                 if let strongSelf = self, strongSelf.chatInteraction.peerId != strongSelf.context.peerId {
+                    // MARK: NAGRAM
+                    let activities = NagramOptions.hidePrivateChatActivities.value && strongSelf.chatInteraction.peerId.namespace == Namespaces.Peer.CloudUser ? [] : activities
                     (strongSelf.centerBarView as? ChatTitleBarView)?.inputActivities = (strongSelf.chatInteraction.peerId, activities)
                     strongSelf.genericView.bubblesView.inputActivities = (strongSelf.chatInteraction.peerId, activities)
                     
@@ -9949,14 +10039,15 @@ open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewC
                 if let item = item as? ChatRowItem, let view = item.view, let message = item.message {
                     var target: ChatPlayEffectTarget?
                     if let file = message.anyMedia as? TelegramMediaFile {
-                        if !file.noPremium, !context.premiumIsBlocked, file.isPremiumSticker {
+                        // MARK: NAGRAM
+                        if !file.noPremium, !context.premiumIsBlocked, file.isPremiumSticker, !NagramOptions.disablePremiumStickerEffects.value {
                             target = .premiumSticker
                         } else if file.isEmojiAnimatedSticker || file.isCustomEmoji, file.isPremiumEmoji {
                             if message.globallyUniqueId != nil || message.flags.contains(.Incoming) {
                                 target = .animatedEmoji
                             }
                         }
-                    } else if let _ = item.entry.additionalData.messageEffect {
+                    } else if let _ = item.entry.additionalData.messageEffect, !NagramOptions.disableMessageEffects.value {
                         if message.globallyUniqueId != nil || message.flags.contains(.Incoming) {
                             target = .effect
                         }
@@ -11352,7 +11443,8 @@ open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewC
         
         _ = chatInteraction.bottomInset.swap(ChatHistoryBottomRowItem.bottomInset(showsInput: ChatControllerView.showsInput(in: mode), inputOverlayHeight: 0))
                 
-        if chatLocation.peerId.namespace == Namespaces.Peer.CloudChannel || chatLocation.peerId.namespace == Namespaces.Peer.CloudUser, mode == .history {
+        // MARK: NAGRAM
+        if chatLocation.peerId.namespace == Namespaces.Peer.CloudChannel || chatLocation.peerId.namespace == Namespaces.Peer.CloudUser, mode == .history, !NagramOptions.hideSponsoredMessages.value {
             self.adMessages = .init(context: context, height: sizeValue.get() |> map { $0 .height}, peerId: chatLocation.peerId)
         } else {
             self.adMessages = nil
@@ -11671,7 +11763,8 @@ open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewC
                                     } else {
                                         strongSelf.chatInteraction.update(animated: true, {
                                             if let updatedUrlPreviewUrl = updatedUrlPreviewUrl, let webpage = result($0.urlPreview?.1) {
-                                                return $0.updatedUrlPreview((updatedUrlPreviewUrl, webpage))
+                                                // MARK: NAGRAM
+                                                return strongSelf.nagramApplyPreviewDefault($0.updatedUrlPreview((updatedUrlPreviewUrl, webpage)), updatedUrlPreviewUrl)
                                             } else {
                                                 return $0.updatedUrlPreview(nil)
                                             }
@@ -11683,7 +11776,8 @@ open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewC
                             if let inScopeResult = inScopeResult {
                                 self.chatInteraction.update(animated: true, {
                                     if let updatedUrlPreviewUrl = updatedUrlPreviewUrl, let webpage = inScopeResult($0.urlPreview?.1) {
-                                        return $0.updatedUrlPreview((updatedUrlPreviewUrl, webpage))
+                                        // MARK: NAGRAM
+                                        return self.nagramApplyPreviewDefault($0.updatedUrlPreview((updatedUrlPreviewUrl, webpage)), updatedUrlPreviewUrl)
                                     } else {
                                         return $0.updatedUrlPreview(nil)
                                     }
@@ -11749,7 +11843,8 @@ open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewC
                         guard let `self` = self else {
                             return
                         }
-                        if self.chatInteraction.peerIsAccountPeer {
+                        // MARK: NAGRAM
+                        if self.chatInteraction.peerIsAccountPeer, !NagramOptions.hideSendStatus.value {
                             self.context.account.updateLocalInputActivity(peerId: .init(peerId: self.chatLocation.peerId, category: mode.activityCategory(value.chatLocation.threadId)), activity: activity, isPresent: true)
                         }
                     }))

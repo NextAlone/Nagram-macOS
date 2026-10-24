@@ -29,6 +29,7 @@ import SecureIdUtils
 import InlineStickerLayer
 import SceneEffects
 import UniqueGiftBackground
+import NagramCore
 
 public class ChatServiceItem: ChatRowItem {
 
@@ -3041,6 +3042,12 @@ public class ChatServiceItem: ChatRowItem {
         }
         
         
+        // MARK: NAGRAM
+        if NagramOptions.showServiceTime.value, message.id.namespace == Namespaces.Message.Cloud, !attributedString.string.isEmpty {
+            let formatter = NagramOptions.secondsInMessages.value ? DateSelectorUtil.chatDateFormatterWithSeconds : DateSelectorUtil.chatDateFormatter
+            let time = formatter.string(from: Date(timeIntervalSince1970: TimeInterval(message.timestamp) - context.timeDifference))
+            _ = attributedString.append(string: " · \(time)", color: grayTextColor, font: .normal(theme.fontSize))
+        }
         text = TextViewLayout(attributedString.detectBold(with: .medium(.text)), truncationType: .end, cutout: nil, alignment: .center)
         text.mayItems = false
         text.interactions = LinkHooks.shared.globalLinkExecutor()

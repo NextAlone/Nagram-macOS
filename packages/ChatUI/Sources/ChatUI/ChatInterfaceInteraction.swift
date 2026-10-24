@@ -333,6 +333,8 @@ public final class ChatInteraction : InterfaceObserver  {
     public var removeChatInteractively:()->Void = { }
     public var updateSearchRequest: (SearchMessagesResultState)->Void = { _ in }
     public var searchPeerMessages: (Peer) -> Void = { _ in }
+    // MARK: NAGRAM
+    public var nagramLoadedMessages: () -> [Message] = { [] }
     public var vote:(MessageId, [Data], Bool) -> Void = { _, _, _ in }
     public var closePoll:(MessageId) -> Void = { _ in }
     public var addPollOption:(MessageId, TelegramMediaPollOption) -> Void = { _, _ in }

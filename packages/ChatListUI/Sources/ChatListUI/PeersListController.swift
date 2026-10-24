@@ -24,6 +24,7 @@ import ChatHistoryModel
 import ChatUI
 import ChatModeTypes
 import InlineStickerLayer
+import NagramCore
 
 public struct PeerListHiddenItems : Equatable {
     public var archive: ItemHideStatus
@@ -2313,7 +2314,8 @@ open class PeersListController<Context: AccountContextProtocol>: TelegramGeneric
         default:
             self.topics = nil
         }
-        if mode.isPlain && !isContacts {
+        // MARK: NAGRAM
+        if mode.isPlain && !isContacts && !NagramOptions.hideStories.value {
             self.storyList = context.engine.messages.storySubscriptions(isHidden: mode.groupId == .archive)
         } else {
             self.storyList = nil

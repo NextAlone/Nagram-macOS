@@ -17,6 +17,7 @@ let package = Package(
         .package(name: "ObjcUtils", path: "../ObjcUtils"),
         .package(name: "Postbox", path: "../../submodules/telegram-ios/submodules/Postbox"),
         .package(name: "SSignalKit", path: "../../submodules/telegram-ios/submodules/SSignalKit"),
+        .package(name: "NagramCore", path: "../NagramCore"),
         .package(name: "TelegramCore", path: "../../submodules/telegram-ios/submodules/TelegramCore"),
     ],
     targets: [
@@ -29,6 +30,7 @@ let package = Package(
                 .product(name: "ObjcUtils", package: "ObjcUtils", condition: nil),
                 .product(name: "Postbox", package: "Postbox", condition: nil),
                 .product(name: "SwiftSignalKit", package: "SSignalKit", condition: nil),
+    .product(name: "NagramCore", package: "NagramCore", condition: nil),
                 .product(name: "TelegramCore", package: "TelegramCore", condition: nil),
             ]),
     ]

@@ -28,6 +28,7 @@ import SystemPermissions
 import Svg
 import LocalAuthentication
 import InlineStickerLayer
+import NagramCore
 
 
 private func webAppOrigin(url: URL) -> String? {
@@ -1626,7 +1627,8 @@ public class WebpageModalController: ModalViewController, WKNavigationDelegate, 
     public override func measure(size: NSSize) {
         if browser == nil  {
             let s = NSMakeSize(size.width + 20, size.height + 20)
-            let size = NSMakeSize(420, min(420 + 420 * 0.6, s.height - 80))
+            // MARK: NAGRAM
+            let size = nagramWebAppSize(NSMakeSize(420, 420 + 420 * 0.6), limit: NSMakeSize(s.width - 80, s.height - 80))
             let rect = size.bounds.insetBy(dx: 10, dy: 10)
             self.genericView.frame = rect
             self.genericView.updateLayout(rect.size, transition: .immediate)

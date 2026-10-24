@@ -5,6 +5,7 @@ import PackageDescription
 let common: [Target.Dependency] = [
     .product(name: "TGUIKit", package: "TGUIKit", condition: nil),
     .product(name: "SwiftSignalKit", package: "SSignalKit", condition: nil),
+    .product(name: "NagramCore", package: "NagramCore", condition: nil),
     .product(name: "TelegramCore", package: "TelegramCore", condition: nil),
     .product(name: "Postbox", package: "Postbox", condition: nil),
     .product(name: "ColorPalette", package: "ColorPalette", condition: nil),
@@ -23,6 +24,7 @@ let package = Package(
     dependencies: [
         .package(name: "TelegramIconsTheme", path: "../TelegramIconsTheme"),
         .package(name: "SSignalKit", path: "../../submodules/telegram-ios/submodules/SSignalKit"),
+        .package(name: "NagramCore", path: "../NagramCore"),
         .package(name: "TelegramCore", path: "../../submodules/telegram-ios/submodules/TelegramCore"),
         .package(name: "Postbox", path: "../../submodules/telegram-ios/submodules/Postbox"),
         .package(name: "TGUIKit", path: "../TGUIKit"),

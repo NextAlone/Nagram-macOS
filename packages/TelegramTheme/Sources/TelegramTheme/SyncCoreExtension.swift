@@ -2,6 +2,7 @@ import Cocoa
 import TelegramCore
 import TGUIKit
 import Postbox
+import NagramCore
 
 extension PixelDimensions {
     public var size: CGSize {
@@ -104,6 +105,10 @@ extension Peer {
     }
     
     public func isRestrictedChannel(_ contentSettings: ContentSettings) -> Bool {
+        // MARK: NAGRAM
+        if NagramOptions.ignoreContentRestrictions.value {
+            return false
+        }
         if let restrictionInfo = self.restrictionInfo {
             for rule in restrictionInfo.rules {
                 #if APP_STORE || STABLE || BETA

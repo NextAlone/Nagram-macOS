@@ -23,6 +23,7 @@ import LocalAnimations
 import MessageTextUtils
 import PremiumUI
 import StarsUI
+import NagramCore
 
 @available(macOS 10.15, *)
 func showWalletSendMoney(chatInteraction: ChatInteraction, user: TelegramUser, flyIntoChat: Bool, morphSource: (() -> NSView?)? = nil) {
@@ -408,7 +409,8 @@ public final class ChatInputAttachButton: View, MorphHoldObserving {
                     self.chatInteraction.attachAudio({ [weak self] in self?.button })
                 }, itemImage: MenuAnimation.menu_music.value))
 
-                if canAttachTodo, context.isPremium {
+                // MARK: NAGRAM
+                if canAttachTodo, context.isPremium, !NagramOptions.hideCreateTodo.value {
                     let item = ContextMenuItem(strings().inputAttachPopoverChecklist, handler: { [weak self] in
                         guard let `self` = self else { return }
                         if let permissionText = permissionText(from: peer, for: .banSendPolls) {

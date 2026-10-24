@@ -18,6 +18,7 @@ import MessageUtils
 import FoundationUtils
 import ChatModeTypes
 import AudioPlayerCore
+import NagramCore
 
 public class ChatMediaLayoutParameters : Equatable {
     
@@ -117,7 +118,8 @@ public class ChatMediaLayoutParameters : Equatable {
             if media.isVideo && media.isAnimated {
                 self.autoplay = autoplayMedia.gifs
             } else {
-                self.autoplay = autoplayMedia.videos
+                // MARK: NAGRAM
+                self.autoplay = autoplayMedia.videos && !NagramOptions.disableVideoAutoplay.value
             }
         } else {
             self.autoplay = false

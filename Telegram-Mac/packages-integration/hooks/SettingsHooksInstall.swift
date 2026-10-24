@@ -1,5 +1,9 @@
 import Cocoa
 import ChatHistoryModel
+// MARK: NAGRAM
+import NagramCore
+import NagramUI
+import TelegramTheme
 import ColorPalette
 import Postbox
 import QrStudioUI
@@ -238,6 +242,10 @@ private func installQrStudioHooks() {
         })
     }
 }
+
+// MARK: NAGRAM
+private let nagramRefreshDisposable = MetaDisposable()
+private let nagramDemoModeDisposable = MetaDisposable()
 
 func installSettingsUIHooks() {
     installQrStudioHooks()
@@ -493,6 +501,23 @@ private func makeSettingsNavigationHooks() -> SettingsNavigationHooks {
     }
     hooks.makeBusinessChatbotController = { context in
         return BusinessChatbotController(context: context)
+    }
+    // MARK: NAGRAM
+    nagramBindLanguage()
+    nagramDemoModeDisposable.set((NagramSettings.shared.changes |> filter { $0.key == NagramOptions.demoMode.key } |> deliverOnMainQueue).start(next: { _ in
+        let enabled = NagramOptions.demoMode.value
+        for window in NSApplication.shared.windows {
+            window.sharingType = enabled ? .none : .readOnly
+        }
+    }))
+    nagramRefreshDisposable.set((NagramSettings.shared.signal(flags: [.refreshMessageView, .refreshDialogList, .refreshComposeButtons]) |> deliverOnMainQueue).start(next: {
+        telegramUpdateTheme(theme.new(), animated: false)
+    }))
+    hooks.makeNagramController = { context in
+        return NagramHomeController(context: context)
+    }
+    hooks.nagramTitle = {
+        return nagramString("lng_nagram_settings")
     }
     hooks.makePasscodeSettingsController = { context in
         return PasscodeSettingsViewController(context as! AccountContext)

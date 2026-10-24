@@ -9,6 +9,7 @@ import TelegramThemeShare
 #else
 import TelegramTheme
 #endif
+import NagramCore
 
 extension ChatListFilterPeerCategories {
    
@@ -191,6 +192,10 @@ extension Peer {
     
     
     public var displayTitle: String {
+        // MARK: NAGRAM
+        if let alias = NagramAliases.alias(peerId: self.id.toInt64()) {
+            return alias
+        }
         switch self {
         case let user as TelegramUser:
             if user.id.isAnonymousSavedMessages {
@@ -199,16 +204,8 @@ extension Peer {
             if user.firstName == nil && user.lastName == nil {
                 return strings().peerDeletedUser
             } else {
-                var name: String = ""
-                if let firstName = user.firstName {
-                    name += firstName
-                }
-                if let lastName = user.lastName {
-                    if user.firstName != nil {
-                        name += " "
-                    }
-                    name += lastName
-                }
+                // MARK: NAGRAM
+                var name: String = NagramAliases.orderedName(first: user.firstName, last: user.lastName)
                 if name.isEmpty {
                     if let phone = user.phone {
                         if !phone.isEmpty {
@@ -255,16 +252,8 @@ extension Peer {
             if user.firstName == nil && user.lastName == nil {
                 return ""
             } else {
-                var name: String = ""
-                if let firstName = user.firstName {
-                    name += firstName
-                }
-                if let lastName = user.lastName {
-                    if user.firstName != nil {
-                        name += " "
-                    }
-                    name += lastName
-                }
+                // MARK: NAGRAM
+                var name: String = NagramAliases.orderedName(first: user.firstName, last: user.lastName)
                 return name
             }
         case let group as TelegramGroup:
@@ -279,6 +268,10 @@ extension Peer {
     }
     
     public var compactDisplayTitle: String {
+        // MARK: NAGRAM
+        if let alias = NagramAliases.alias(peerId: self.id.toInt64()) {
+            return alias
+        }
         switch self {
         case let user as TelegramUser:
             if user.id.isAnonymousSavedMessages {

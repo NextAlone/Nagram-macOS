@@ -9,6 +9,7 @@ import AvatarUI
 import TelegramContext
 import TelegramTheme
 import TelegramUtils
+import NagramCore
 
 public final class ChatAvatarView : Control {
     private let avatar: AvatarStoryControl = AvatarStoryControl(font: .avatar(.title), size: NSMakeSize(36, 36))
@@ -43,7 +44,8 @@ public final class ChatAvatarView : Control {
         self.peer = peer
         
         self.avatar.setPeer(account: context.account, peer: peer, message: message, size: size, disableForum: disableForum)
-        if peer.isPremium || force, peer.hasVideo, !TelegramUtilsHooks.shared.isLite(.animations) {
+        // MARK: NAGRAM
+        if peer.isPremium || force, peer.hasVideo, !TelegramUtilsHooks.shared.isLite(.animations), !NagramOptions.disableVideoUserpics.value {
             let signal = peerPhotos(context: context, peerId: peer.id) |> deliverOnMainQueue
             var first = true
             self.disposable.set(signal.start(next: { [weak self] photos in

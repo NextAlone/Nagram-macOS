@@ -10,6 +10,7 @@ import ThemeSettings
 import TelegramTheme
 import TelegramContext
 import AlertsUI
+import NagramCore
 
 
 public func joinChannel(context: any AccountContextProtocol, peerId: PeerId) {
@@ -18,6 +19,10 @@ public func joinChannel(context: any AccountContextProtocol, peerId: PeerId) {
         switch outcome {
         case .joined:
             _ = (showModalSuccess(for: context.window, icon: theme.icons.successModalProgress, delay: 1.5)).start()
+            // MARK: NAGRAM
+            if NagramOptions.collapseRecommendedChannels.value {
+                _ = context.engine.peers.toggleRecommendedChannelsHidden(peerId: peerId, hidden: true).start()
+            }
         case let .webView(webView):
             ChatNavigationHooks.shared.openJoinChatBotWebViewObserved(context, webView.botPeer.id, webView.url, webView.queryId, peerId)
         }
