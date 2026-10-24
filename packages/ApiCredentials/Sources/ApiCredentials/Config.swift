@@ -1,18 +1,25 @@
 import Cocoa
 
 public final class ApiEnvironment {
+    // MARK: NAGRAM
     public static var apiId:Int32 {
-        return 9
+        guard let raw = Bundle.main.infoDictionary?["NagramApiId"] as? String, let value = Int32(raw) else {
+            preconditionFailure("NagramApiId is missing from Info.plist. Set NAGRAM_API_ID in Telegram-Mac/Nagram.local.xcconfig (see docs/nagram/building.md).")
+        }
+        return value
     }
     public static var apiHash:String {
-        return "3975f648bb682ee889f35483bc618d1c"
+        guard let value = Bundle.main.infoDictionary?["NagramApiHash"] as? String, value.count == 32 else {
+            preconditionFailure("NagramApiHash is missing from Info.plist. Set NAGRAM_API_HASH in Telegram-Mac/Nagram.local.xcconfig (see docs/nagram/building.md).")
+        }
+        return value
     }
     
     public static var bundleId: String {
-        return "ru.keepcoder.Telegram"
+        return "xyz.nextalone.nagram.macos"
     }
     public static var teamId: String {
-        return "6N38VWS5BX"
+        return "7P8CLHDH5G"
     }
     
     

@@ -29,3 +29,6 @@ core-xprojects/tlottie/build
 .swiftpm/
 .ci-build-logs/
 *.profraw
+
+# Nagram local build credentials
+Telegram-Mac/Nagram.local.xcconfig

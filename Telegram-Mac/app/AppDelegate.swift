@@ -1431,6 +1431,10 @@ class AppDelegate: NSResponder, NSApplicationDelegate, NSUserNotificationCenterD
     }
     
     private func crashRecoveryUpdate() -> CrashRecoveryUpdate {
+        // MARK: NAGRAM
+        if Bundle.main.bundleIdentifier?.hasPrefix("xyz.nextalone.nagram") == true {
+            return .website
+        }
         #if APP_STORE
         return .appStore
         #elseif GITHUB || DEBUG

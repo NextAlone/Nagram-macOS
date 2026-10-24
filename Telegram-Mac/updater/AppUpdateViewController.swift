@@ -732,6 +732,10 @@ private func cancelStagedUpdate() {
 }
 
 private func resetUpdater() {
+    // MARK: NAGRAM
+    if Bundle.main.bundleIdentifier?.hasPrefix("xyz.nextalone.nagram") == true {
+        return
+    }
     
     #if !GITHUB
         let update:()->Void = {

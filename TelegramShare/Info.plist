@@ -7,9 +7,13 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>Telegram</string>
+	<string>Nagram</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
+	<key>NagramApiId</key>
+	<string>$(NAGRAM_API_ID)</string>
+	<key>NagramApiHash</key>
+	<string>$(NAGRAM_API_HASH)</string>
 	<key>CFBundleIdentifier</key>
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
@@ -54,7 +58,7 @@
 		<string>$(PRODUCT_MODULE_NAME).ShareViewController</string>
 	</dict>
 	<key>NSHumanReadableCopyright</key>
-	<string>Copyright © 2024 Telegram. All rights reserved.</string>
+	<string>Nagram is based on Telegram for macOS. Nagram icon artwork © MaitungTM.</string>
 	<key>SOURCE</key>
 	<string>${SOURCE}</string>
 </dict>

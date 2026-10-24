@@ -56,55 +56,65 @@ private func systemPalette() -> ColorPalette {
 }
 
 private let appStoreURL = URL(string: "macappstore://apps.apple.com/app/id747648890")!
-private let websiteURL = URL(string: "https://macos.telegram.org")!
+// MARK: NAGRAM
+private let isNagram = Bundle.main.bundleIdentifier?.hasPrefix("xyz.nextalone.nagram") == true
+private let websiteURL = URL(string: isNagram ? "https://github.com/NextAlone/Nagram-macOS/releases" : "https://macos.telegram.org")!
 
+private func nagramBranded(_ text: String) -> String {
+    guard isNagram else {
+        return text
+    }
+    return text.replacingOccurrences(of: "macos.telegram.org", with: "GitHub").replacingOccurrences(of: "Telegram", with: "Nagram")
+}
+
+// MARK: NAGRAM
 private enum Text {
-    static let title = strings().crashRecoveryTitle
-    static let message = strings().crashRecoveryDescription
-    static let checking = strings().crashRecoveryChecking
-    static let checkingDetail = strings().crashRecoveryCheckingDetail
+    static let title = nagramBranded(strings().crashRecoveryTitle)
+    static let message = nagramBranded(strings().crashRecoveryDescription)
+    static let checking = nagramBranded(strings().crashRecoveryChecking)
+    static let checkingDetail = nagramBranded(strings().crashRecoveryCheckingDetail)
     static func downloading(_ version: String) -> String {
-        return version.isEmpty ? strings().crashRecoveryDownloadingUpdate : strings().crashRecoveryDownloadingVersion(version)
+        return nagramBranded(version.isEmpty ? strings().crashRecoveryDownloadingUpdate : strings().crashRecoveryDownloadingVersion(version))
     }
     static func downloaded(_ current: String, _ total: String) -> String {
-        return strings().crashRecoveryDownloadProgress(current, total)
+        return nagramBranded(strings().crashRecoveryDownloadProgress(current, total))
     }
-    static let downloadStarting = strings().crashRecoveryDownloadStarting
+    static let downloadStarting = nagramBranded(strings().crashRecoveryDownloadStarting)
     static func preparing(_ version: String) -> String {
-        return version.isEmpty ? strings().crashRecoveryPreparingUpdate : strings().crashRecoveryPreparingVersion(version)
+        return nagramBranded(version.isEmpty ? strings().crashRecoveryPreparingUpdate : strings().crashRecoveryPreparingVersion(version))
     }
-    static let preparingDetail = strings().crashRecoveryPreparingDetail
+    static let preparingDetail = nagramBranded(strings().crashRecoveryPreparingDetail)
     static func ready(_ version: String) -> String {
-        return version.isEmpty ? strings().crashRecoveryReadyUpdate : strings().crashRecoveryReadyVersion(version)
+        return nagramBranded(version.isEmpty ? strings().crashRecoveryReadyUpdate : strings().crashRecoveryReadyVersion(version))
     }
-    static let readyDetail = strings().crashRecoveryReadyDetail
-    static let installing = strings().crashRecoveryInstalling
-    static let installingDetail = strings().crashRecoveryInstallingDetail
-    static let upToDate = strings().crashRecoveryUpToDate
-    static let upToDateDetail = strings().crashRecoveryUpToDateDetail
-    static let failed = strings().crashRecoveryFailed
-    static let failedDetail = strings().crashRecoveryFailedDetail
-    static let appStore = strings().crashRecoveryAppStore
-    static let appStoreDetail = strings().crashRecoveryAppStoreDetail
-    static let website = strings().crashRecoveryWebsite
-    static let websiteDetail = strings().crashRecoveryWebsiteDetail
-    static let update = strings().crashRecoveryUpdate
-    static let downloadingButton = strings().crashRecoveryDownloadingButton
-    static let preparingButton = strings().crashRecoveryPreparingButton
-    static let install = strings().crashRecoveryInstall
-    static let installingButton = strings().crashRecoveryInstallingButton
-    static let checkAgain = strings().crashRecoveryCheckAgain
-    static let tryAgain = strings().crashRecoveryTryAgain
-    static let openAppStore = strings().crashRecoveryOpenAppStore
-    static let openWebsite = strings().crashRecoveryOpenWebsite
-    static let continueAnyway = strings().crashRecoveryContinueAnyway
-    static let quit = strings().crashRecoveryQuit
-    static let websiteLink = strings().crashRecoveryWebsiteLink
-    static let reset = strings().crashRecoveryReset
-    static let resetTitle = strings().crashRecoveryResetTitle
-    static let resetText = strings().crashRecoveryResetInfo
-    static let resetConfirm = strings().crashRecoveryResetConfirm
-    static let cancel = strings().crashRecoveryCancel
+    static let readyDetail = nagramBranded(strings().crashRecoveryReadyDetail)
+    static let installing = nagramBranded(strings().crashRecoveryInstalling)
+    static let installingDetail = nagramBranded(strings().crashRecoveryInstallingDetail)
+    static let upToDate = nagramBranded(strings().crashRecoveryUpToDate)
+    static let upToDateDetail = nagramBranded(strings().crashRecoveryUpToDateDetail)
+    static let failed = nagramBranded(strings().crashRecoveryFailed)
+    static let failedDetail = nagramBranded(strings().crashRecoveryFailedDetail)
+    static let appStore = nagramBranded(strings().crashRecoveryAppStore)
+    static let appStoreDetail = nagramBranded(strings().crashRecoveryAppStoreDetail)
+    static let website = nagramBranded(strings().crashRecoveryWebsite)
+    static let websiteDetail = nagramBranded(strings().crashRecoveryWebsiteDetail)
+    static let update = nagramBranded(strings().crashRecoveryUpdate)
+    static let downloadingButton = nagramBranded(strings().crashRecoveryDownloadingButton)
+    static let preparingButton = nagramBranded(strings().crashRecoveryPreparingButton)
+    static let install = nagramBranded(strings().crashRecoveryInstall)
+    static let installingButton = nagramBranded(strings().crashRecoveryInstallingButton)
+    static let checkAgain = nagramBranded(strings().crashRecoveryCheckAgain)
+    static let tryAgain = nagramBranded(strings().crashRecoveryTryAgain)
+    static let openAppStore = nagramBranded(strings().crashRecoveryOpenAppStore)
+    static let openWebsite = nagramBranded(strings().crashRecoveryOpenWebsite)
+    static let continueAnyway = nagramBranded(strings().crashRecoveryContinueAnyway)
+    static let quit = nagramBranded(strings().crashRecoveryQuit)
+    static let websiteLink = nagramBranded(strings().crashRecoveryWebsiteLink)
+    static let reset = nagramBranded(strings().crashRecoveryReset)
+    static let resetTitle = nagramBranded(strings().crashRecoveryResetTitle)
+    static let resetText = nagramBranded(strings().crashRecoveryResetInfo)
+    static let resetConfirm = nagramBranded(strings().crashRecoveryResetConfirm)
+    static let cancel = nagramBranded(strings().crashRecoveryCancel)
 }
 
 private func formattedSize(_ bytes: Int) -> String {

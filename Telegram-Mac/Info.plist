@@ -12,12 +12,18 @@
 	<string></string>
 	<key>CFBundleIconName</key>
 	<string>AppIcon</string>
+	<key>NagramApiId</key>
+	<string>$(NAGRAM_API_ID)</string>
+	<key>NagramApiHash</key>
+	<string>$(NAGRAM_API_HASH)</string>
 	<key>CFBundleIdentifier</key>
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>$(PRODUCT_NAME)</string>
+	<string>Nagram</string>
+	<key>CFBundleDisplayName</key>
+	<string>Nagram</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -70,7 +76,7 @@
 	<key>NSDownloadsFolderUsageDescription</key>
 	<string>We need access to your Downloads folder so that you can save files from chats.</string>
 	<key>NSHumanReadableCopyright</key>
-	<string>Copyright © 2024 Telegram. All rights reserved.</string>
+	<string>Nagram is based on Telegram for macOS. Nagram icon artwork © MaitungTM.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
 	<string>We need access to your location so that you can send your current locations and setup Auto-Night theme</string>
 	<key>NSLocationUsageDescription</key>
