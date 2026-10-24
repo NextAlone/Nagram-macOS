@@ -116,6 +116,13 @@ func nagramMessageMenuItems(_ data: ChatMenuItemsData, isService: Bool) -> (afte
         }
     }
 
+    if canForward, visible(.forwardWithoutQuote) {
+        afterForward.append(ContextMenuItem(nagramString("lng_nagram_menu_forward_without_quote"), handler: {
+            NagramForwardRequest.requestHideNames()
+            chatInteraction.forwardMessages([message])
+        }, itemImage: MenuAnimation.menu_forward.value))
+    }
+
     if let author = message.author, peer?.isGroup == true || peer?.isSupergroup == true, visible(.messagesFromSender) {
         afterPin.append(ContextMenuItem(nagramString("lng_nagram_menu_messages_from_sender"), handler: {
             chatInteraction.searchPeerMessages(author)

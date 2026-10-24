@@ -2120,11 +2120,15 @@ public class ChatInputView: View, Notifable {
             kind = .paidStars(amount: stars.value * Int64(messagesCount))
         } else if hasContent {
             kind = .send
+        // MARK: NAGRAM
+        } else if NagramOptions.hideRecordingButton.value {
+            kind = .send
         } else {
             kind = .voice
         }
 
-        let isSendEnabled: Bool = value.chatMode.customChatLink == nil || !value.effectiveInput.inputText.isEmpty
+        // MARK: NAGRAM
+        let isSendEnabled: Bool = (value.chatMode.customChatLink == nil || !value.effectiveInput.inputText.isEmpty) && (hasContent || !NagramOptions.hideRecordingButton.value)
 
         return ChatInputSendButton.State(
             kind: kind,

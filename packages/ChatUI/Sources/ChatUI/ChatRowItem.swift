@@ -2779,7 +2779,10 @@ public class ChatRowItem: TableRowItem {
                 }
                 if let attribute = attribute as? ViewCountMessageAttribute {
                     // MARK: NAGRAM
-                    let viewsText = NagramOptions.exactMessageCounters.value ? max(1, attribute.count).separatedNumber : max(1, attribute.count).prettyNumber
+                    var viewsText = NagramOptions.exactMessageCounters.value ? max(1, attribute.count).separatedNumber : max(1, attribute.count).prettyNumber
+                    if NagramOptions.showForwardCount.value, let forwards = message.attributes.compactMap({ $0 as? ForwardCountMessageAttribute }).first, forwards.count > 0 {
+                        viewsText += "  ↪ " + (NagramOptions.exactMessageCounters.value ? forwards.count.separatedNumber : forwards.count.prettyNumber)
+                    }
                     let attr: NSAttributedString = .initialize(string: viewsText, color: isStateOverlayLayout ? stateOverlayTextColor : !hasBubble ? theme.colors.grayText : theme.chat.grayText(isIncoming, object.renderType == .bubble), font: renderType == .bubble ? .normal(.small) : .normal(.short))
 
                     self.channelViews = NagramOptions.hideMessageViews.value ? nil : TextViewLayout(attr, maximumNumberOfLines: 1)

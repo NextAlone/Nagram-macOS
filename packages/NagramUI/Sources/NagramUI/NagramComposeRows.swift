@@ -6,6 +6,8 @@ func nagramComposeRows() -> [NagramRow] {
     var rows: [NagramRow] = []
     rows.append(.header(nagramString("lng_nagram_compose_buttons")))
     rows.append(.toggle(o.hideAttachButton))
+    rows.append(.toggle(o.hideEmojiButton))
+    rows.append(.toggle(o.hideRecordingButton))
     rows.append(.toggle(o.hideBotCommandButton))
     rows.append(.toggle(o.hideBotMenu))
     rows.append(.toggle(o.hideAutoDeleteButton))

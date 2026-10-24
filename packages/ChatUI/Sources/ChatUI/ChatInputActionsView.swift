@@ -368,16 +368,24 @@ public class ChatInputActionsView: View, Notifable {
         return [keyboard, muteChannelMessages, gift, suggestPost, scheduled, secretTimer].compactMap { $0 }
     }
 
+    // MARK: NAGRAM
+    private var entertainmentWidth: CGFloat {
+        return NagramOptions.hideEmojiButton.value ? 0 : entertaiments.frame.width
+    }
+
     public var visibleWidth: CGFloat {
         let shown = extraButtons.reduce(0) { $1.controlIsHidden ? $0 : $0 + 1 }
-        return entertaiments.frame.width + CGFloat(shown) * ChatInputActionsView.extraButtonSize
+        // MARK: NAGRAM
+        return entertainmentWidth + CGFloat(shown) * ChatInputActionsView.extraButtonSize
     }
 
     public func updateLayout(size: NSSize, transition: ContainedViewLayoutTransition) {
         let bottomY = size.height - entertaiments.frame.height
-        var x = size.width - entertaiments.frame.width
+        // MARK: NAGRAM
+        entertaiments.isHidden = NagramOptions.hideEmojiButton.value
+        var x = size.width - entertainmentWidth
 
-        transition.updateFrame(view: entertaiments, frame: NSMakeRect(x, bottomY, entertaiments.frame.width, entertaiments.frame.height))
+        transition.updateFrame(view: entertaiments, frame: NSMakeRect(size.width - entertaiments.frame.width, bottomY, entertaiments.frame.width, entertaiments.frame.height))
 
         let centerY = { (view: NSView) -> CGFloat in
             bottomY + (self.entertaiments.frame.height - view.frame.height) / 2

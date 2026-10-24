@@ -16,6 +16,7 @@ func nagramMessagesRows() -> [NagramRow] {
 
     rows.append(.header(nagramString("lng_nagram_marks_and_counts")))
     rows.append(.toggle(o.exactMessageCounters))
+    rows.append(.toggle(o.showForwardCount, enabled: { !o.hideMessageViews.value }))
     rows.append(.toggle(o.hideMessageViews))
     rows.append(.toggle(o.hideChannelSignature))
     rows.append(.toggle(o.hideEditedBadge))

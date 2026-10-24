@@ -157,3 +157,16 @@ public enum NagramMenuAction: Int, CaseIterable {
         }
     }
 }
+
+public enum NagramForwardRequest {
+    private static var hideNames = false
+
+    public static func requestHideNames() {
+        hideNames = true
+    }
+
+    public static func takeHideNames() -> Bool {
+        defer { hideNames = false }
+        return hideNames
+    }
+}

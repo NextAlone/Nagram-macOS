@@ -21,6 +21,7 @@ func nagramChatsRows() -> [NagramRow] {
         o.startupFolderMode.set(value, account: NagramSettings.shared.currentAccount)
     }))
     rows.append(.toggle(o.hideAllChatsFolder))
+    rows.append(.toggle(o.showArchiveInFolders))
     rows.append(.toggle(o.hideFolderUnreadCounters))
 
     rows.append(.header(nagramString("lng_nagram_promotions")))

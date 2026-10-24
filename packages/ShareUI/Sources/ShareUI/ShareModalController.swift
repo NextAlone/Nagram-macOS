@@ -1,5 +1,6 @@
 import Cocoa
 import TGUIKit
+import NagramCore
 import SwiftSignalKit
 import TelegramCore
 import Localization
@@ -1161,6 +1162,8 @@ public final class ForwardMessagesObject : ShareObject {
     private let disposable = MetaDisposable()
     private let album: Bool
     private let getMessages:(([MessageId], Bool)->Signal<[Message], NoError>)?
+    // MARK: NAGRAM
+    private let nagramHideNames = NagramForwardRequest.takeHideNames()
 
     public init(_ context: any AccountContextProtocol, messages: [Message], emptyPerformOnClose: Bool = false, album: Bool = false, getMessages:(([MessageId], Bool)->Signal<[Message], NoError>)? = nil) {
 
@@ -1285,7 +1288,8 @@ public final class ForwardMessagesObject : ShareObject {
                                 expectedCommentCount = 0
                                 commentResult = .single([])
                             }
-                            let forwardResult = Sender.forwardMessages(messageIds: messageIds, context: context, peerId: context.account.peerId, replyId: nil, threadId: threadId)
+                            // MARK: NAGRAM
+                            let forwardResult = Sender.forwardMessages(messageIds: messageIds, context: context, peerId: context.account.peerId, replyId: nil, threadId: threadId, hideNames: self.nagramHideNames)
                             let accepted = combineLatest(shareFirstResult(commentResult |> map(Optional.some), or: nil), shareFirstResult(forwardResult |> map(Optional.some), or: nil))
                             |> take(1)
                             |> deliverOnMainQueue
@@ -1315,7 +1319,8 @@ public final class ForwardMessagesObject : ShareObject {
                             if threadId == nil, let controller = navigation.controller as? ChatInterfaceController, controller.chatInteraction.chatLocation == .peer(peerId) {
                                 controller.chatInteraction.update({ current in
                                     current.withoutSelectionState().updatedInterfaceState {
-                                        $0.withUpdatedForwardMessageIds(messageIds).withUpdatedInputState(comment ?? current.effectiveInput)
+                                        // MARK: NAGRAM
+                                        $0.withUpdatedForwardMessageIds(messageIds).withUpdatedInputState(comment ?? current.effectiveInput).withUpdatedHideSendersName(self.nagramHideNames || $0.hideSendersName, saveTempValue: false)
                                     }
                                 })
                                 observedResult?(.draftPrepared)
@@ -1349,7 +1354,14 @@ public final class ForwardMessagesObject : ShareObject {
                                 }
                                 navigation.push(newone)
 
-                                return (newone.ready.get() |> filter {$0} |> take(1) |> beforeNext { _ in observedResult?(.destinationReady) } |> ignoreValues |> castError(String.self))
+                                // MARK: NAGRAM
+                                let hideNames = self.nagramHideNames
+                                return (newone.ready.get() |> filter {$0} |> take(1) |> beforeNext { [weak newone] _ in
+                                    if hideNames {
+                                        newone?.chatInteraction.update({ $0.updatedInterfaceState({ $0.withUpdatedHideSendersName(true, saveTempValue: false) }) })
+                                    }
+                                    observedResult?(.destinationReady)
+                                } |> ignoreValues |> castError(String.self))
                             }
                         }
                     } else {
@@ -1387,7 +1399,8 @@ public final class ForwardMessagesObject : ShareObject {
                 let threadId = threadIds[peerId] ?? threadId
                 
                 signals.append(viewSignal |> mapToSignal { (peer, sendAs) in
-                    let forward: Signal<[MessageId?], NoError> = Sender.forwardMessages(messageIds: messageIds, context: context, peerId: peerId, replyId: nil, threadId: threadId, silent: FastSettings.isChannelMessagesMuted(peerId) || withoutSound, atDate: date, sendAsPeerId: sendAs)
+                    // MARK: NAGRAM
+                    let forward: Signal<[MessageId?], NoError> = Sender.forwardMessages(messageIds: messageIds, context: context, peerId: peerId, replyId: nil, threadId: threadId, hideNames: self.nagramHideNames, silent: FastSettings.isChannelMessagesMuted(peerId) || withoutSound, atDate: date, sendAsPeerId: sendAs)
                     var caption: Signal<[MessageId?], NoError>?
                     if let comment = comment, !comment.inputText.isEmpty, peer.canSendMessage() {
                         let parsingUrlType: ParsingType

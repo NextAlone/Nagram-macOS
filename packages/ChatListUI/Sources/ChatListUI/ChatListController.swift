@@ -1060,6 +1060,10 @@ public class ChatListController<Context: AccountContextProtocol> : PeersListCont
                     for (i, group) in update.list.groupItems.reversed().enumerated() {
                         mapped.append(.group(i, group, animateGroupNextTransition.swap(nil) == group.id, hideStatus, state.controllerAppear, state.appear == .short, storyState))
                     }
+                    // MARK: NAGRAM
+                    if state.mode == .plain, case .filter = state.filterData.filter, update.list.groupItems.isEmpty, NagramOptions.showArchiveInFolders.value {
+                        mapped.append(.group(0, .init(id: .archive, topMessage: nil, items: [], unreadCount: 0), animateGroupNextTransition.swap(nil) == .archive, hideStatus, state.controllerAppear, state.appear == .short, storyState))
+                    }
                     if state.mode == .plain, state.filterData.filter == .allChats, !update.list.hasLater {
                         if update.list.groupItems.isEmpty, let storyState = storyState, !storyState.items.isEmpty {
                             mapped.append(.group(0, .init(id: .archive, topMessage: nil, items: [], unreadCount: 0), animateGroupNextTransition.swap(nil) == .archive, hideStatus, state.controllerAppear, state.appear == .short, storyState))
