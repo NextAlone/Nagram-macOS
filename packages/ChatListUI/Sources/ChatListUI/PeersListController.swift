@@ -55,6 +55,8 @@ private final class Arguments {
     let selectSearchTag:(PeerListState.SelectedSearchTag)->Void
     let setPeerAsTag:(Peer?)->Void
     let toggleContactsSort:(PeerListState.ContactsSort)->Void
+    // MARK: NAGRAM
+    var nagramOpenShortcut: ((NagramFolderShortcut) -> Void)?
     init(context: any AccountContextProtocol, joinGroupCall:@escaping(ChatActiveGroupCallInfo)->Void, joinGroup:@escaping(PeerId)->Void, openPendingRequests:@escaping()->Void, dismissPendingRequests: @escaping([PeerId])->Void, openStory:@escaping(StoryInitialIndex?, Bool, Bool)->Void, getStoryInterfaceState:@escaping()->StoryListChatListRowItem.InterfaceState, revealStoriesState:@escaping()->Void, setupFilter: @escaping(ChatListFilter)->Void, openFilterSettings: @escaping(ChatListFilter)->Void, tabsMenuItems: @escaping(ChatListFilter, Int?, Bool?)->[ContextMenuItem], getController:@escaping()->ViewController?, navigationBarLeftPosition:@escaping()->CGFloat, contextMenu: @escaping()->ContextMenu, selectSearchTag:@escaping(PeerListState.SelectedSearchTag)->Void, setPeerAsTag:@escaping(Peer?)->Void, toggleContactsSort:@escaping(PeerListState.ContactsSort)->Void) {
         self.context = context
         self.joinGroupCall = joinGroupCall
@@ -1239,6 +1241,8 @@ public class PeerListContainerView : Control {
                 return nil
             })
             foldersItem?.table = self.tableView
+            // MARK: NAGRAM
+            foldersItem?.nagramOpenShortcut = arguments.nagramOpenShortcut
         } else {
             self.foldersItem = nil
         }
@@ -2805,11 +2809,12 @@ open class PeersListController<Context: AccountContextProtocol>: TelegramGeneric
             self?.context.isInGlobalSearch = state.responder
         })
         
-        let stateSignal = state.get() |> distinctUntilChanged(isEqual: { lhs, rhs in
+        // MARK: NAGRAM
+        let stateSignal = combineLatest(state.get() |> distinctUntilChanged(isEqual: { lhs, rhs in
             var lhs = lhs
             lhs.activities = rhs.activities
             return lhs == rhs
-        })
+        }), NagramOptions.savedInFolderList.signal, NagramOptions.archiveInFolderList.signal) |> map { state, _, _ in state }
         
         let previousState: Atomic<PeerListState?> = Atomic(value: nil)
         
@@ -3018,6 +3023,19 @@ open class PeersListController<Context: AccountContextProtocol>: TelegramGeneric
             }
             FastSettings.contactsSort = sort
         })
+
+        // MARK: NAGRAM
+        arguments.nagramOpenShortcut = { [weak self] shortcut in
+            guard let self else {
+                return
+            }
+            switch shortcut {
+            case .saved:
+                ChatUIHooks.shared.navigateToChat(context.bindings.rootNavigation(), context, .peer(context.peerId))
+            case .archive:
+                self.navigationController?.push(ChatListController(self.context, modal: false, mode: .folder(.archive)))
+            }
+        }
         
         self.takeArguments = { [weak arguments] in
             return arguments

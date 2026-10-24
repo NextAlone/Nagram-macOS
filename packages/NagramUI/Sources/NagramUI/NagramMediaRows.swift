@@ -14,6 +14,7 @@ func nagramMediaRows() -> [NagramRow] {
     rows.append(.toggle(o.hideRecommendedEmoji))
     rows.append(.toggle(o.hideGifCategories))
     rows.append(.toggle(o.hideGreetingSticker))
+    rows.append(.action(title: nagramString("lng_nagram_catalog_title"), info: nagramString("lng_nagram_catalog_about"), run: nagramExportStickerCatalog))
 
     rows.append(.header(nagramString("lng_nagram_playback")))
     rows.append(.toggle(o.disableVideoAutoplay))

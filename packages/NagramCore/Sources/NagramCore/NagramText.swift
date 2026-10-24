@@ -138,3 +138,18 @@ public enum NagramText {
         return current
     }
 }
+
+public enum NagramQuickReplies {
+    public static var replies: [String] {
+        guard let object = nagramJsonObject(NagramOptions.quickReplies.value), object["version"] as? Int == 1, let replies = object["replies"] as? [String], replies.count == 2 else {
+            return ["", ""]
+        }
+        return replies
+    }
+
+    public static func set(_ index: Int, _ text: String) {
+        var current = replies
+        current[index] = text
+        NagramOptions.quickReplies.set(nagramJsonString(["version": 1, "replies": current]))
+    }
+}

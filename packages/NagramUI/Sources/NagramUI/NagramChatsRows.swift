@@ -22,6 +22,8 @@ func nagramChatsRows() -> [NagramRow] {
     }))
     rows.append(.toggle(o.hideAllChatsFolder))
     rows.append(.toggle(o.showArchiveInFolders))
+    rows.append(.toggle(o.savedInFolderList))
+    rows.append(.toggle(o.archiveInFolderList))
     rows.append(.toggle(o.hideFolderUnreadCounters))
 
     rows.append(.header(nagramString("lng_nagram_promotions")))

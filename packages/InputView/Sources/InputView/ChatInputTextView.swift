@@ -3,6 +3,7 @@ import AppKit
 import TGUIKit
 import ColorPalette
 import Localization
+import NagramCore
 
 public extension InputTextView {
     static func rawTextHeight(for attributedString: NSAttributedString, width: CGFloat) -> CGFloat {
@@ -1161,6 +1162,18 @@ public final class InputTextView: BaseTextView, NSLayoutManagerDelegate, NSTextS
             }
             menu?.addItem(NSMenuItem.separator())
             menu?.addItem(translateItem)
+        }
+
+        // MARK: NAGRAM
+        let quickReplies = NagramQuickReplies.replies.enumerated().filter { !$0.element.isEmpty }
+        if !quickReplies.isEmpty {
+            menu?.addItem(NSMenuItem.separator())
+            for (index, reply) in quickReplies {
+                let item = NSMenuItem(title: nagramString("lng_nagram_quick_reply_insert", ["index": "\(index + 1)"]), action: #selector(nagramInsertQuickReply(_:)), keyEquivalent: "")
+                item.target = self
+                item.representedObject = reply
+                menu?.addItem(item)
+            }
         }
 
         menu?.addItem(NSMenuItem.separator())

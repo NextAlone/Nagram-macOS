@@ -170,3 +170,21 @@ public enum NagramForwardRequest {
         return hideNames
     }
 }
+
+public enum NagramFolderShortcut: Int32, CaseIterable {
+    case saved = -103
+    case archive = -104
+
+    public var option: NagramOption<Bool> {
+        switch self {
+        case .saved:
+            return NagramOptions.savedInFolderList
+        case .archive:
+            return NagramOptions.archiveInFolderList
+        }
+    }
+
+    public static var visible: [NagramFolderShortcut] {
+        return allCases.filter { $0.option.value }
+    }
+}

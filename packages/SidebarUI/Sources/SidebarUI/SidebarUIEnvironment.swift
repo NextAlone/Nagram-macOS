@@ -70,6 +70,8 @@ public protocol SidebarUIEnvironment: AnyObject {
     func folderImage(_ name: String) -> NSImage
     func menuImage(_ image: SidebarMenuImage) -> ((NSColor, ContextMenuItem) -> AppMenuItemImageDrawable)?
     func colorImage(_ color: NSColor, ring: Bool) -> CGImage
+    // MARK: NAGRAM
+    func nagramOpenFolderShortcut(_ id: Int32)
 }
 
 extension SidebarUIEnvironment {

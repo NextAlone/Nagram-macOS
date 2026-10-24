@@ -26,6 +26,9 @@ func nagramComposeRows() -> [NagramRow] {
         NagramChoice(1, nagramString("lng_nagram_placeholder_chat")),
         NagramChoice(2, nagramString("lng_nagram_placeholder_sender")),
     ]))
+    rows.append(.page(title: nagramString("lng_nagram_quick_replies"), open: { context in
+        return NagramSettingsController(context: context.context, section: NagramSection(id: "quickReplies", title: nagramString("lng_nagram_quick_replies"), rows: nagramQuickReplyRows))
+    }))
 
     rows.append(.header(nagramString("lng_nagram_text_format")))
     rows.append(.toggle(o.disableAutoMarkdown))
@@ -47,4 +50,10 @@ func nagramComposeRows() -> [NagramRow] {
     rows.append(.header(nagramString("lng_nagram_forwarding")))
     rows.append(.toggle(o.forwardBeforeComment))
     return rows
+}
+
+func nagramQuickReplyRows() -> [NagramRow] {
+    return ["lng_nagram_quick_reply_one", "lng_nagram_quick_reply_two"].enumerated().map { index, key in
+        .boundText(id: "quickReply.\(index)", title: nagramString(key), get: { NagramQuickReplies.replies[index] }, set: { NagramQuickReplies.set(index, $0) })
+    }
 }

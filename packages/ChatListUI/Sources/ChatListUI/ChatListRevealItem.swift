@@ -24,6 +24,8 @@ public class ChatListRevealItem: TableStickItem {
     fileprivate let _menuItems: ((ChatListFilter, Int?, Bool?)->[ContextMenuItem])?
     fileprivate let getCurrentStoriesState:()->(StoryListChatListRowItem.InterfaceState, NSView)?
     fileprivate let customBackgroundColor: NSColor?
+    // MARK: NAGRAM
+    var nagramOpenShortcut: ((NagramFolderShortcut) -> Void)?
     public init(_ initialSize: NSSize, context: any AccountContextProtocol, tabs: [ChatListFilter], selected: ChatListFilter, counters: ChatListFilterBadges, action: ((ChatListFilter)->Void)? = nil, openSettings: (()->Void)? = nil, menuItems: ((ChatListFilter, Int?, Bool?)->[ContextMenuItem])? = nil, presentation: TelegramPresentationTheme = theme, customBackgroundColor: NSColor? = nil, getCurrentStoriesState:@escaping()->(StoryListChatListRowItem.InterfaceState, NSView)? = { return nil }) {
         self.action = action
         self.context = context
@@ -295,13 +297,24 @@ public final class ChatListRevealView : TableStickView {
             items.append(segmentItem)
             index += 1
         }
+
+        // MARK: NAGRAM
+        if item.nagramOpenShortcut != nil {
+            for shortcut in NagramFolderShortcut.visible {
+                let title = shortcut == .saved ? strings().peerSavedMessages : strings().chatListArchivedChats
+                items.append(ScrollableSegmentItem(title: title, index: index, uniqueId: Int64(shortcut.rawValue), selected: false, insets: insets, icon: nil, theme: segmentTheme, equatable: nil))
+                index += 1
+            }
+        }
         
         segmentView.updateItems(items, animated: animated)
         let range: NSRange
+        // MARK: NAGRAM
+        let tabCount = item.tabs.count
         if context.isPremium {
-            range = NSMakeRange(0, items.count)
+            range = NSMakeRange(0, tabCount)
         } else {
-            range = NSMakeRange(1, items.count - 1)
+            range = NSMakeRange(1, tabCount - 1)
         }
         segmentView.resortRange = range
         segmentView.resortHandler = { from, to in
@@ -315,8 +328,14 @@ public final class ChatListRevealView : TableStickView {
                 return state
             }).start()
         }
-        segmentView.didChangeSelectedItem = { [weak item] selected in
+        segmentView.didChangeSelectedItem = { [weak item, weak self] selected in
             if let item = item {
+                // MARK: NAGRAM
+                if let shortcut = NagramFolderShortcut(rawValue: Int32(truncatingIfNeeded: selected.uniqueId)) {
+                    item.nagramOpenShortcut?(shortcut)
+                    self?.set(item: item, animated: false)
+                    return
+                }
                 if selected.uniqueId == -1 {
                     item.action?(.allChats)
                 } else if selected.uniqueId == -2 {
@@ -327,6 +346,12 @@ public final class ChatListRevealView : TableStickView {
             }
         }
         segmentView.menuItems = { [weak item] selected in
+            // MARK: NAGRAM
+            if let shortcut = NagramFolderShortcut(rawValue: Int32(truncatingIfNeeded: selected.uniqueId)) {
+                return .single([ContextMenuItem(nagramString("lng_nagram_hide_folder_entry"), handler: {
+                    shortcut.option.set(false)
+                })])
+            }
             if let item = item, selected.uniqueId != -1 && selected.uniqueId != -2 {
                 return item.menuItems(for: item.tabs[selected.index], unreadCount: item.counters.count(for: item.tabs[selected.index])?.count)
             } else if let item = item, selected.uniqueId == -1 {

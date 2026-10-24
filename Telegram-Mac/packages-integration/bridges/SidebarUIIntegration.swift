@@ -6,6 +6,8 @@ import SwiftSignalKit
 import TGUIKit
 import InputView
 import InAppSettings
+import NagramCore
+import ChatListUI
 
 func navigateToChatListFilter(_ filter: Int32, context: AccountContext) {
 
@@ -207,6 +209,20 @@ final class AppSidebarUIEnvironment: SidebarUIEnvironment {
 
     func colorImage(_ color: NSColor, ring: Bool) -> CGImage {
         return ring ? generateRingImage(nameColor: .init(main: color)) : generateFillImage(nameColor: .init(main: color))
+    }
+
+    // MARK: NAGRAM
+    func nagramOpenFolderShortcut(_ id: Int32) {
+        switch NagramFolderShortcut(rawValue: id) {
+        case .saved:
+            navigateToChat(navigation: accountContext.bindings.rootNavigation(), context: accountContext, chatLocation: .peer(accountContext.peerId))
+        case .archive:
+            let leftController = accountContext.bindings.mainViewController
+            leftController.showChatList()
+            leftController.navigation.push(ChatListController(accountContext, modal: false, mode: .folder(.archive)))
+        case nil:
+            break
+        }
     }
 }
 

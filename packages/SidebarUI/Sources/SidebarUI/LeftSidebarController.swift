@@ -208,6 +208,12 @@ func leftSidebarEntries(_ filterData: SidebarState, badgeForFilter: (ChatListFil
         index += 1
     }
 
+    // MARK: NAGRAM
+    for shortcut in NagramFolderShortcut.visible {
+        entries.append(.folder(index: index, selected: false, filter: nagramShortcutFilter(shortcut), unreadCount: 0, hasUnmutedUnread: false))
+        index += 1
+    }
+
     return entries
 }
 
@@ -254,10 +260,18 @@ public final class LeftSidebarController: SidebarViewController<LeftSidebarView>
 
         genericView.environment = environment
 
+        // MARK: NAGRAM
         let arguments = LeftSidebarArguments(context: context, environment: environment, callback: { filter in
+            if NagramFolderShortcut(rawValue: filter.sidebarId) != nil {
+                environment.nagramOpenFolderShortcut(filter.sidebarId)
+                return
+            }
             environment.navigateToFilter(filter.sidebarId)
 
         }, menuItems: { filter, unreadCount, allMuted in
+            if let shortcut = NagramFolderShortcut(rawValue: filter.sidebarId) {
+                return nagramShortcutMenuItems(shortcut)
+            }
             return filterContextMenuItems(filter, unreadCount: unreadCount, includeAllMuted: allMuted, context: context, environment: environment)
         })
         let initialSize = self.atomicSize
@@ -290,7 +304,8 @@ public final class LeftSidebarController: SidebarViewController<LeftSidebarView>
             self.genericView.updateLocalizationAndTheme(theme: theme)
             self.readyOnce()
 
-            let range = sidebarResortRange(rowCount: self.genericView.tableView.count, isPremium: context.isPremium)
+            // MARK: NAGRAM
+            let range = sidebarResortRange(rowCount: self.genericView.tableView.count - NagramFolderShortcut.visible.count, isPremium: context.isPremium)
             if self.genericView.tableView.resortController?.resortRange != range {
                 let resortController = TableResortController(resortRange: range, start: { _ in }, resort: { _ in }, complete: { from, to in
                     _ = context.engine.peers.updateChatListFiltersInteractively({ filters in

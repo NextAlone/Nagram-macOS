@@ -1,4 +1,5 @@
 import Foundation
+import AppKit
 import NagramCore
 
 public extension ChatTextInputState {
@@ -35,5 +36,14 @@ public extension ChatTextInputState {
         }
         let length = (text as NSString).length
         return ChatTextInputState(inputText: text, selectionRange: length ..< length, attributes: updated)
+    }
+}
+
+extension InputTextView {
+    @objc func nagramInsertQuickReply(_ sender: NSMenuItem) {
+        guard let reply = sender.representedObject as? String else {
+            return
+        }
+        insertText(reply, replacementRange: self.selectedRange)
     }
 }
