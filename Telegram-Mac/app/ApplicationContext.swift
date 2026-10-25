@@ -17,6 +17,7 @@ import DetectSpeech
 import WalletContext
 import AppKit
 import NagramCore
+import NagramUI
 
 
 /// Opens a community — a container peer, not a conversation — as its chat list in the left controller.
@@ -437,6 +438,8 @@ final class AuthorizedApplicationContext: NSObject, SplitViewDelegate {
                 
         
         super.init()
+        // MARK: NAGRAM
+        nagramAttachCloudSync(context)
         
 
                 

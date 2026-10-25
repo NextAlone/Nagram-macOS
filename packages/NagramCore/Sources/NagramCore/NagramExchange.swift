@@ -105,6 +105,9 @@ public enum NagramExchange {
             }
             let before = settings.rawValue(for: info)
             let after: Any? = isEqual(stored, info.fallback) ? nil : stored
+            if info.type == .object, sameObject(before, json) {
+                continue
+            }
             if !isEqual(before, after) {
                 plan.changes.append(NagramExchangeChange(key: key, before: before, after: after))
             }
@@ -124,6 +127,13 @@ public enum NagramExchange {
             }
         }
         return .success(())
+    }
+
+    private static func sameObject(_ raw: Any?, _ json: Any) -> Bool {
+        guard let string = raw as? String, let data = string.data(using: .utf8), let current = (try? JSONSerialization.jsonObject(with: data)) as? NSObject, let incoming = json as? NSObject else {
+            return false
+        }
+        return current.isEqual(incoming)
     }
 
     private static func isEqual(_ lhs: Any?, _ rhs: Any?) -> Bool {

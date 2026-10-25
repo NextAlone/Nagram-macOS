@@ -58,32 +58,37 @@ private func importConfiguration(_ context: NagramActionContext) {
             alert(for: context.window, info: nagramString("lng_nagram_config_read_error") + "\n\n" + error.localizedDescription)
             return
         }
-        switch NagramExchange.plan(data) {
-        case let .failure(error):
-            alert(for: context.window, info: nagramImportErrorText(error))
-        case let .success(plan):
-            if plan.changes.isEmpty {
-                alert(for: context.window, info: nagramString("lng_nagram_config_no_changes"))
-                return
-            }
-            var lines: [String] = [nagramString("lng_nagram_config_import_about"), "", nagramString("lng_nagram_config_changes", ["amount": "\(plan.changes.count)"])]
-            for change in plan.changes {
-                lines.append("• \(optionTitle(change.key)): \(describe(change.before)) → \(describe(change.after))")
-            }
-            if !plan.skippedKeys.isEmpty {
-                lines.append("")
-                lines.append(nagramString("lng_nagram_config_unknown", ["amount": "\(plan.skippedKeys.count)"]))
-                lines.append(plan.skippedKeys.prefix(20).joined(separator: ", "))
-            }
-            verifyAlert(for: context.window, header: nagramString("lng_nagram_config_preview"), information: lines.joined(separator: "\n"), ok: nagramString("lng_nagram_config_apply"), successHandler: { _ in
-                switch NagramExchange.apply(plan) {
-                case .success:
-                    showModalText(for: context.window, text: nagramString("lng_nagram_config_imported"))
-                case let .failure(error):
-                    alert(for: context.window, info: nagramImportErrorText(error))
-                }
-            })
+        nagramShowImportPreview(data, target: .file, window: context.window)
+    }
+}
+
+func nagramShowImportPreview(_ data: Data, target: NagramExchangeTarget, window: Window, applied: (() -> Void)? = nil) {
+    switch NagramExchange.plan(data, target: target) {
+    case let .failure(error):
+        alert(for: window, info: nagramImportErrorText(error))
+    case let .success(plan):
+        if plan.changes.isEmpty {
+            alert(for: window, info: nagramString("lng_nagram_config_no_changes"))
+            return
         }
+        var lines: [String] = [nagramString("lng_nagram_config_import_about"), "", nagramString("lng_nagram_config_changes", ["amount": "\(plan.changes.count)"])]
+        for change in plan.changes {
+            lines.append("• \(optionTitle(change.key)): \(describe(change.before)) → \(describe(change.after))")
+        }
+        if !plan.skippedKeys.isEmpty {
+            lines.append("")
+            lines.append(nagramString("lng_nagram_config_unknown", ["amount": "\(plan.skippedKeys.count)"]))
+            lines.append(plan.skippedKeys.prefix(20).joined(separator: ", "))
+        }
+        verifyAlert(for: window, header: nagramString("lng_nagram_config_preview"), information: lines.joined(separator: "\n"), ok: nagramString("lng_nagram_config_apply"), successHandler: { _ in
+            switch NagramExchange.apply(plan) {
+            case .success:
+                applied?()
+                showModalText(for: window, text: nagramString("lng_nagram_config_imported"))
+            case let .failure(error):
+                alert(for: window, info: nagramImportErrorText(error))
+            }
+        })
     }
 }
 
@@ -140,6 +145,7 @@ func nagramConfigRows() -> [NagramRow] {
     rows.append(.action(title: nagramString("lng_nagram_config_export"), run: exportConfiguration))
     rows.append(.action(title: nagramString("lng_nagram_config_import"), run: importConfiguration))
     rows.append(.action(title: nagramString("lng_nagram_config_diagnostics"), run: copyDiagnostics))
+    rows.append(contentsOf: nagramCloudSyncRows())
     rows.append(.header(nagramString("lng_nagram_debug_logs")))
     rows.append(.action(title: nagramString("lng_nagram_debug_logs"), value: { nagramString(Logger.shared.logToFile ? "lng_nagram_config_on" : "lng_nagram_config_off") }, run: { context in
         let enable = !Logger.shared.logToFile

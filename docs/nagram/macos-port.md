@@ -34,7 +34,7 @@ Done (setting row present and wired):
 - Rules: I01 (account rules, outgoing, Zalgo, hidden authors, hidden messages) I11 I12 I13 I14 I15 I16 I17.
 - Translation: H01 (message translation through OpenAI-compatible, Anthropic, DeepL, Google, Microsoft or Yandex
   instances), H03 (instances, presets, Keychain keys, connection test), H10 (summary).
-- Configuration: J01 J02 J03 J04 J06 J07; `tg://nasettings/<section>?r=<row>` and `t.me/nasettings/…` links.
+- Configuration: J01 J02 J03 J04 J06 J07 J08 J09 J10 J11; `tg://nasettings/<section>?r=<row>` and `t.me/nasettings/…` links.
 
 Messages hidden by a rule or by "hide message" keep their bubble, with the media removed and the text replaced by
 `lng_nagram_filter_hidden`, as in Nagram Desktop; they are not dropped from the history.
@@ -50,6 +50,18 @@ F13 checks the file with Nagram Desktop's rules (format, version 1, at most 1,00
 pack as installed or "view pack" (opening the native pack preview), and "apply order" moves the installed packs into the
 file's order while keeping the rest after them.
 
+J08–J11 use the same Saved Messages backup as Nagram Desktop, so either client restores the other's backup: a
+`nagram-sync-v1.json` document captioned `#nagram_sync` (a hashtag entity), holding exactly
+`{"version":1,"kind":"nagram-sync","updatedAt":…,"app":…,"payload":{"version":1,"options":{…}}}`, where `payload` is the
+configuration export without `LocalOnly` options. The decision table, the per-account `nagram.cloudSyncState` and
+`nagram.cloudSyncAuto` (owner user id) values, the 30 s debounce, 15 min interval and 60 s timeout match the Qt client.
+Backups are found by searching `#nagram_sync` and by scanning the newest local Saved Messages, because the server search
+does not return a just-sent message for several minutes; the upload goes through the regular send queue and its cloud id
+comes from the correlation id.
+
+Importing compares object options (such as the message menu) by content, so a backup or file whose JSON keys are ordered
+differently is not listed as a change.
+
 `G01` uses the macOS-only key `nagram.hideMyPhone` (Nagram Desktop reuses its upstream setting).
 
 Not applicable on macOS: A15, A18, A19 (the title already shows the account), A22, B14, B15, B19, D10 (the macOS composer
@@ -60,4 +72,4 @@ B23 community grouping, F19 voice bitrate, G18 upload status, I09 Android platfo
 
 Pending, app-side work not yet done: A11 A14 A20, B01 B05 (specific folder) B09 B16 B17 B18 B20 B21 B24 B25 B26 B29, C27,
 D24 D25 D29 D30, E18 E21 E22 E33 E37, F10 F11 F16 F21–F27,
-G09 G12 G17 G19–G21, H02 H04 H06–H09 H11, I02 I04–I08, J08–J11.
+G09 G12 G17 G19–G21, H02 H04 H06–H09 H11, I02 I04–I08.
