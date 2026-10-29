@@ -55,9 +55,9 @@ private func systemPalette() -> ColorPalette {
     return whitePalette
 }
 
-private let appStoreURL = URL(string: "macappstore://apps.apple.com/app/id747648890")!
 // MARK: NAGRAM
 private let isNagram = Bundle.main.bundleIdentifier?.hasPrefix("xyz.nextalone.nagram") == true
+private let appStoreURL = URL(string: isNagram ? "macappstore://apps.apple.com/app/id6781000861" : "macappstore://apps.apple.com/app/id747648890")!
 private let websiteURL = URL(string: isNagram ? "https://github.com/NextAlone/Nagram-macOS/releases" : "https://macos.telegram.org")!
 
 private func nagramBranded(_ text: String) -> String {

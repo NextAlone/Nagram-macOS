@@ -3638,6 +3638,7 @@
 				C232EA8E1E1D07E700C4D38C /* Frameworks */,
 				C232EA8F1E1D07E700C4D38C /* Resources */,
 				C232EAA91E1D080100C4D38C /* CopyFiles */,
+				4E4147524D0000000000A003 /* Unsign Resource Bundles */,
 			);
 			buildRules = (
 			);
@@ -3698,6 +3699,8 @@
 				D098C7111D7E175A007784E4 /* Sources */,
 				D098C7131D7E175A007784E4 /* Resources */,
 				27A35BDA2F03C7140001B63D /* CopyFiles */,
+				4E4147524D0000000000A001 /* Remove Sparkle From App Store Build */,
+				4E4147524D0000000000A002 /* Unsign Resource Bundles */,
 			);
 			buildRules = (
 			);
@@ -4552,6 +4555,63 @@
 
 
 /* Begin PBXShellScriptBuildPhase section */
+		4E4147524D0000000000A002 /* Unsign Resource Bundles */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Unsign Resource Bundles";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# NAGRAM: App Store export keeps the development signature on SwiftPM resource bundles, which App Store Connect rejects (ITMS-90284).\nfor b in \"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH\"/*.bundle; do\n    [ -d \"$b/Contents/MacOS\" ] || rm -rf \"$b/Contents/_CodeSignature\"\ndone\n";
+		};
+		4E4147524D0000000000A003 /* Unsign Resource Bundles */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Unsign Resource Bundles";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# NAGRAM: App Store export keeps the development signature on SwiftPM resource bundles, which App Store Connect rejects (ITMS-90284).\nfor b in \"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH\"/*.bundle; do\n    [ -d \"$b/Contents/MacOS\" ] || rm -rf \"$b/Contents/_CodeSignature\"\ndone\n";
+		};
+		4E4147524D0000000000A001 /* Remove Sparkle From App Store Build */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Remove Sparkle From App Store Build";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# NAGRAM: the updater is compiled out under APP_STORE and the app links Sparkle weakly,\n# but Sparkle's Autoupdate.app is not sandboxed, which the Mac App Store rejects.\nif [ \"$SOURCE\" = \"APP_STORE\" ]; then\n    rm -rf \"$TARGET_BUILD_DIR/$FRAMEWORKS_FOLDER_PATH/Sparkle.framework\"\nfi\n";
+		};
 		161B8B778DC5A90FA234F9E6 /* Check Wallet Engine Bindings */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
@@ -4923,7 +4983,7 @@
 				OTHER_CODE_SIGN_FLAGS = "";
 				OTHER_LDFLAGS = "-ObjC";
 				OTHER_SWIFT_FLAGS = "$(inherited)";
-				PRODUCT_BUNDLE_IDENTIFIER = xyz.nextalone.nagram.macos;
+				PRODUCT_BUNDLE_IDENTIFIER = xyz.nextalone.nagram;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = PRODUCTION;
@@ -4976,7 +5036,7 @@
 				OTHER_CODE_SIGN_FLAGS = "";
 				OTHER_LDFLAGS = "";
 				OTHER_SWIFT_FLAGS = "$(inherited)";
-				PRODUCT_BUNDLE_IDENTIFIER = xyz.nextalone.nagram.macos.TelegramShare;
+				PRODUCT_BUNDLE_IDENTIFIER = xyz.nextalone.nagram.TelegramShare;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SKIP_INSTALL = NO;
@@ -5029,7 +5089,7 @@
 				OTHER_LDFLAGS = "";
 				OTHER_SWIFT_FLAGS = "$(inherited)";
 				"OTHER_SWIFT_FLAGS[arch=*]" = "";
-				PRODUCT_BUNDLE_IDENTIFIER = xyz.nextalone.nagram.macos.TelegramShare;
+				PRODUCT_BUNDLE_IDENTIFIER = xyz.nextalone.nagram.TelegramShare;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SKIP_INSTALL = NO;
@@ -5149,7 +5209,7 @@
 				OTHER_CODE_SIGN_FLAGS = "";
 				OTHER_LDFLAGS = "-ObjC";
 				OTHER_SWIFT_FLAGS = "$(inherited)";
-				PRODUCT_BUNDLE_IDENTIFIER = xyz.nextalone.nagram.macos;
+				PRODUCT_BUNDLE_IDENTIFIER = xyz.nextalone.nagram;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;

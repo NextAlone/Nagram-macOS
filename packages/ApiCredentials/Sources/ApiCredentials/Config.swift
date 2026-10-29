@@ -15,6 +15,10 @@ public final class ApiEnvironment {
         return value
     }
     
+    // MARK: NAGRAM
+    // Stem of the app group and keychain groups, not the app's bundle identifier
+    // (xyz.nextalone.nagram, shared with iOS for universal purchase). Changing it
+    // moves the group container and loses existing accounts.
     public static var bundleId: String {
         return "xyz.nextalone.nagram.macos"
     }

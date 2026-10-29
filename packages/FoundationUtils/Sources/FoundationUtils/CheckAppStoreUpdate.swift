@@ -4,7 +4,8 @@ import Foundation
 
 public func fetchAppStoreVersion(completion: @escaping (String?) -> Void) {
     let appID = Bundle.main.infoDictionary!["CFBundleIdentifier"] as! String
-    let urlString = "https://itunes.apple.com/lookup?bundleId=\(appID)"
+    // MARK: NAGRAM
+    let urlString = "https://itunes.apple.com/lookup?bundleId=\(appID)&entity=macSoftware"
     
     guard let url = URL(string: urlString) else {
         completion(nil)
@@ -20,7 +21,7 @@ public func fetchAppStoreVersion(completion: @escaping (String?) -> Void) {
         do {
             if let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
                let results = json["results"] as? [[String: Any]],
-               let appStoreVersion = results.first?["version"] as? String {
+               let appStoreVersion = results.first(where: { $0["kind"] as? String == "mac-software" })?["version"] as? String {
                 completion(appStoreVersion)
             } else {
                 completion(nil)
@@ -48,7 +49,7 @@ public func checkForAppstoreUpdate(completion:@escaping(Bool)->Void) {
             return
         }
         DispatchQueue.main.async {
-            if let currentVersion = getCurrentAppVersion(), currentVersion < appStoreVersion {
+            if let currentVersion = getCurrentAppVersion(), currentVersion.compare(appStoreVersion, options: .numeric) == .orderedAscending {
                 completion(true)
             } else {
                 completion(false)

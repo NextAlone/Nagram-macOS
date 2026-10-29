@@ -18,10 +18,15 @@ systems that do not render Icon Composer icons.
 Application identity:
 
 - Display name: Nagram.
-- Bundle identifier: `xyz.nextalone.nagram.macos`, share extension
-  `xyz.nextalone.nagram.macos.TelegramShare`, team `7P8CLHDH5G`, app group
-  `7P8CLHDH5G.xyz.nextalone.nagram.macos`. Telegram data of the official app is
-  not shared or imported.
+- Bundle identifier: `xyz.nextalone.nagram`, share extension
+  `xyz.nextalone.nagram.TelegramShare`, team `7P8CLHDH5G`. The app shares the
+  iOS app's identifier and App Store Connect record (universal purchase); its
+  share extension is distinct from the iOS `xyz.nextalone.nagram.Share`.
+- App group `7P8CLHDH5G.xyz.nextalone.nagram.macos` and the keychain groups keep
+  the earlier `.macos` stem (`ApiEnvironment.bundleId`), so existing data stays
+  in place. Telegram data of the official app is not shared or imported.
+- The Mac App Store build keeps `com.apple.developer.maps` (the app links
+  MapKit), so the shared App ID needs the Maps capability.
 - API credentials are not in the repository; they are read from
   `Telegram-Mac/Nagram.local.xcconfig` (`NAGRAM_API_ID`, `NAGRAM_API_HASH`).
 - Internal target names (`Telegram`, `TelegramShare`) and the `tg:` protocol

@@ -7,7 +7,10 @@ import FoundationUtils
 
 public let clown: String = "🤡"
 
-public let itunesAppLink = "https://apps.apple.com/us/app/telegram/id747648890"
+// MARK: NAGRAM
+public let itunesAppLink = Bundle.main.bundleIdentifier?.hasPrefix("xyz.nextalone.nagram") == true
+    ? "https://apps.apple.com/app/id6781000861"
+    : "https://apps.apple.com/us/app/telegram/id747648890"
 public let XTRSTAR: String = "⭐️"
 public var GOLD: NSColor {
     return theme.colors.isDark ? NSColor(0xF5C555) : NSColor(0xD2720B)
