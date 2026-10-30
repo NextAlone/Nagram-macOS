@@ -5,3 +5,4 @@
 "lng_nagram_stickers_and_emoji" = "貼圖與表情";
 "lng_nagram_playback" = "播放";
 "lng_nagram_settings_link_unsupported" = "macOS 版不支援此 Nagram 設定連結。";
+"lng_nagram_config_unavailable" = "此用戶端暫無以下功能，設定值會先保存，待支援後生效：{amount}";

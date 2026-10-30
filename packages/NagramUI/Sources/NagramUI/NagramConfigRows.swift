@@ -1,5 +1,9 @@
 import Cocoa
 import TGUIKit
+import SwiftSignalKit
+import TelegramTheme
+import InputDataUI
+import Localization
 import AlertsUI
 import NagramCore
 import TelegramCore
@@ -62,33 +66,84 @@ private func importConfiguration(_ context: NagramActionContext) {
     }
 }
 
+private func importPreviewSections(_ plan: NagramExchangePlan) -> [String] {
+    var sections: [String] = []
+    let available = plan.changes.filter { !plan.unavailableKeys.contains($0.key) }
+    if plan.changes.isEmpty {
+        sections.append(nagramString("lng_nagram_config_no_changes"))
+    } else {
+        sections.append(nagramString("lng_nagram_config_import_about"))
+    }
+    if !plan.unavailableKeys.isEmpty {
+        sections.append(nagramString("lng_nagram_config_unavailable", ["amount": "\(plan.unavailableKeys.count)"]) + "\n" + plan.unavailableKeys.map(optionTitle).joined(separator: ", "))
+    }
+    if !available.isEmpty {
+        let lines = available.map { "• \(optionTitle($0.key)): \(describe($0.before)) → \(describe($0.after))" }
+        sections.append(([nagramString("lng_nagram_config_changes", ["amount": "\(available.count)"])] + lines).joined(separator: "\n"))
+    }
+    if plan.adjustedKeys.contains(where: { !plan.unavailableKeys.contains($0) }) {
+        sections.append(nagramString("lng_nagram_inline_import_disabled"))
+    }
+    if !plan.skippedKeys.isEmpty {
+        sections.append(nagramString("lng_nagram_config_unknown", ["amount": "\(plan.skippedKeys.count)"]) + "\n" + plan.skippedKeys.prefix(20).joined(separator: ", "))
+    }
+    return sections
+}
+
+private func showImportPreviewModal(_ plan: NagramExchangePlan, window: Window, applied: (() -> Void)?) {
+    let sections = importPreviewSections(plan)
+    let signal: Signal<InputDataSignalValue, NoError> = .single(InputDataSignalValue(entries: {
+        var entries: [InputDataEntry] = []
+        var sectionId: Int32 = 0
+        var index: Int32 = 0
+        entries.append(.sectionId(sectionId, type: .normal))
+        sectionId += 1
+        for section in sections {
+            entries.append(.desc(sectionId: sectionId, index: index, text: .plain(section), data: .init(color: theme.colors.text, viewType: .textTopItem)))
+            index += 1
+            entries.append(.sectionId(sectionId, type: .normal))
+            sectionId += 1
+        }
+        return entries
+    }()))
+    let controller = InputDataController(dataSignal: signal, title: nagramString("lng_nagram_config_preview"))
+    var close: (() -> Void)?
+    let interactions = ModalInteractions(acceptTitle: plan.changes.isEmpty ? strings().alertOK : nagramString("lng_nagram_config_apply"), accept: {
+        close?()
+        guard !plan.changes.isEmpty else {
+            return
+        }
+        switch NagramExchange.apply(plan) {
+        case .success:
+            applied?()
+            showModalText(for: window, text: nagramString("lng_nagram_config_imported"))
+            if plan.requiresRestart {
+                nagramAskRelaunch(window: window)
+            }
+        case let .failure(error):
+            alert(for: window, info: nagramImportErrorText(error))
+        }
+    }, singleButton: true)
+    let modal = InputDataModalController(controller, modalInteractions: interactions)
+    controller.leftModalHeader = ModalHeaderData(image: theme.icons.modalClose, handler: { [weak modal] in
+        modal?.close()
+    })
+    close = { [weak modal] in
+        modal?.close()
+    }
+    showModal(with: modal, for: window)
+}
+
 func nagramShowImportPreview(_ data: Data, target: NagramExchangeTarget, window: Window, applied: (() -> Void)? = nil) {
     switch NagramExchange.plan(data, target: target) {
     case let .failure(error):
         alert(for: window, info: nagramImportErrorText(error))
     case let .success(plan):
-        if plan.changes.isEmpty {
+        if plan.changes.isEmpty && plan.unavailableKeys.isEmpty {
             alert(for: window, info: nagramString("lng_nagram_config_no_changes"))
             return
         }
-        var lines: [String] = [nagramString("lng_nagram_config_import_about"), "", nagramString("lng_nagram_config_changes", ["amount": "\(plan.changes.count)"])]
-        for change in plan.changes {
-            lines.append("• \(optionTitle(change.key)): \(describe(change.before)) → \(describe(change.after))")
-        }
-        if !plan.skippedKeys.isEmpty {
-            lines.append("")
-            lines.append(nagramString("lng_nagram_config_unknown", ["amount": "\(plan.skippedKeys.count)"]))
-            lines.append(plan.skippedKeys.prefix(20).joined(separator: ", "))
-        }
-        verifyAlert(for: window, header: nagramString("lng_nagram_config_preview"), information: lines.joined(separator: "\n"), ok: nagramString("lng_nagram_config_apply"), successHandler: { _ in
-            switch NagramExchange.apply(plan) {
-            case .success:
-                applied?()
-                showModalText(for: window, text: nagramString("lng_nagram_config_imported"))
-            case let .failure(error):
-                alert(for: window, info: nagramImportErrorText(error))
-            }
-        })
+        showImportPreviewModal(plan, window: window, applied: applied)
     }
 }
 

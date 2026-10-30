@@ -19,5 +19,9 @@ let package = Package(
             ],
             path: "Sources/NagramCore",
             resources: [.copy("Resources")]),
+        .testTarget(
+            name: "NagramCoreTests",
+            dependencies: ["NagramCore"],
+            path: "Tests/NagramCoreTests"),
     ]
 )

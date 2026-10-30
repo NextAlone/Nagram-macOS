@@ -6,3 +6,4 @@
 "lng_nagram_stickers_and_emoji" = "Stickers and emoji";
 "lng_nagram_playback" = "Playback";
 "lng_nagram_settings_link_unsupported" = "This Nagram settings link is not supported on macOS.";
+"lng_nagram_config_unavailable" = "Not available in this client yet. The values are kept and apply once supported: {amount}";

@@ -14,6 +14,17 @@ public struct NagramExchangeChange {
 public struct NagramExchangePlan {
     public var changes: [NagramExchangeChange] = []
     public var skippedKeys: [String] = []
+    public var adjustedKeys: [String] = []
+    public var unavailableKeys: [String] = []
+
+    public var requiresRestart: Bool {
+        return changes.contains { change in
+            guard let info = NagramOptions.all.first(where: { $0.key == change.key }) else {
+                return false
+            }
+            return info.flags.contains(.requiresRestart) && !info.flags.contains(.notImplemented)
+        }
+    }
 }
 
 public enum NagramExchangeError: Error, Equatable {
@@ -103,9 +114,16 @@ public enum NagramExchange {
             guard let json = options[key], let stored = storedValue(info, json), info.accepts(stored) else {
                 return .failure(.invalidValue(key))
             }
+            let value = info.imported?(stored) ?? stored
+            if !isEqual(value, stored) {
+                plan.adjustedKeys.append(key)
+            }
             let before = settings.rawValue(for: info)
-            let after: Any? = isEqual(stored, info.fallback) ? nil : stored
-            if info.type == .object, sameObject(before, json) {
+            let after: Any? = isEqual(value, info.fallback) ? nil : value
+            if after != nil, info.flags.contains(.notImplemented) {
+                plan.unavailableKeys.append(key)
+            }
+            if info.type == .object, sameObject(before, value) {
                 continue
             }
             if !isEqual(before, after) {
@@ -129,11 +147,17 @@ public enum NagramExchange {
         return .success(())
     }
 
-    private static func sameObject(_ raw: Any?, _ json: Any) -> Bool {
-        guard let string = raw as? String, let data = string.data(using: .utf8), let current = (try? JSONSerialization.jsonObject(with: data)) as? NSObject, let incoming = json as? NSObject else {
+    private static func sameObject(_ lhs: Any?, _ rhs: Any?) -> Bool {
+        func parsed(_ raw: Any?) -> NSObject? {
+            guard let string = raw as? String, let data = string.data(using: .utf8) else {
+                return nil
+            }
+            return (try? JSONSerialization.jsonObject(with: data)) as? NSObject
+        }
+        guard let lhs = parsed(lhs), let rhs = parsed(rhs) else {
             return false
         }
-        return current.isEqual(incoming)
+        return lhs.isEqual(rhs)
     }
 
     private static func isEqual(_ lhs: Any?, _ rhs: Any?) -> Bool {

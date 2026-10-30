@@ -30,6 +30,7 @@ public struct NagramFlags: OptionSet, Hashable {
     public static let refreshDialogList = NagramFlags(rawValue: 1 << 4)
     public static let refreshComposeButtons = NagramFlags(rawValue: 1 << 5)
     public static let localOnly = NagramFlags(rawValue: 1 << 6)
+    public static let notImplemented = NagramFlags(rawValue: 1 << 7)
 }
 
 public enum NagramValueType {
@@ -81,6 +82,7 @@ public struct NagramOptionInfo {
     public let type: NagramValueType
     public let fallback: Any
     public let accepts: (Any) -> Bool
+    public let imported: ((Any) -> Any)?
 
     public var exportable: Bool {
         return scope == .device && flags.contains(.exportable)
@@ -96,8 +98,9 @@ public struct NagramOption<Value: NagramValue> {
     public let flags: NagramFlags
     public let isObject: Bool
     public let validate: ((Value) -> Bool)?
+    public let imported: ((Value) -> Value)?
 
-    public init(_ key: String, _ scope: NagramScope, _ fallback: Value, _ category: NagramCategory, _ titleKey: String, _ flags: NagramFlags, object: Bool = false, validate: ((Value) -> Bool)? = nil) {
+    public init(_ key: String, _ scope: NagramScope, _ fallback: Value, _ category: NagramCategory, _ titleKey: String, _ flags: NagramFlags, object: Bool = false, validate: ((Value) -> Bool)? = nil, imported: ((Value) -> Value)? = nil) {
         self.key = key
         self.scope = scope
         self.fallback = fallback
@@ -107,6 +110,7 @@ public struct NagramOption<Value: NagramValue> {
         self.flags = exportable ? flags.union(.exportable) : flags
         self.isObject = object
         self.validate = validate
+        self.imported = imported
     }
 
     public func accepts(_ value: Value) -> Bool {
@@ -131,6 +135,13 @@ public struct NagramOption<Value: NagramValue> {
                 return false
             }
             return option.accepts(value)
+        }, imported: imported.map { adjust in
+            return { raw in
+                guard let value = Value(stored: raw) else {
+                    return raw
+                }
+                return adjust(value).stored
+            }
         })
     }
 }
