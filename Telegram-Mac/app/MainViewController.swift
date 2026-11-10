@@ -331,8 +331,16 @@ final class MainController_View: View {
         return MainController_View.containerCornerRadius
     }
 
+    // MARK: NAGRAM
+    weak var clippedContentView: NSView? {
+        didSet {
+            applyCornerRadius()
+        }
+    }
+
     private func applyCornerRadius() {
         let radius = currentCornerRadius
+        clippedContentView?.layer?.cornerRadius = radius
         bgView.layer?.cornerRadius = radius
         glassView.cornerRadius = radius
     }
@@ -476,6 +484,8 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
         self.tabController.bar = .init(height: 0)
 
         addSubview(self.tabController.view)
+        // MARK: NAGRAM
+        genericView.clippedContentView = self.tabController.view
 
         if !context.isSupport {
             addSubview(updateController.view)
