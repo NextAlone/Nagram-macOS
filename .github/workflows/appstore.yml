@@ -119,7 +119,14 @@ jobs:
           NAGRAM_API_HASH: ${{ secrets.NAGRAM_API_HASH }}
         run: |
           set -euo pipefail
-          : "${NAGRAM_API_ID:?NAGRAM_API_ID secret is missing}" "${NAGRAM_API_HASH:?NAGRAM_API_HASH secret is missing}"
+          if [ -z "$NAGRAM_API_ID" ] || [ -z "$NAGRAM_API_HASH" ]; then
+            if [ "${{ inputs.upload }}" = "true" ]; then
+              echo "::error::Set the NAGRAM_API_ID and NAGRAM_API_HASH secrets before uploading."
+              exit 1
+            fi
+            echo "::warning::NAGRAM_API_ID or NAGRAM_API_HASH is missing; this build cannot log in and must not be distributed."
+            exit 0
+          fi
           printf 'NAGRAM_API_ID = %s\nNAGRAM_API_HASH = %s\n' "$NAGRAM_API_ID" "$NAGRAM_API_HASH" > Telegram-Mac/Nagram.local.xcconfig
 
       - name: Archive
