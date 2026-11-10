@@ -47,6 +47,19 @@ jobs:
           echo "build=$(xcodebuild -version | awk '/^Build version / {print $3}')" >> "$GITHUB_OUTPUT"
           df -h "$GITHUB_WORKSPACE"
 
+      - name: Free disk space
+        run: |
+          set -euo pipefail
+          KEEP="$(cd "$(xcode-select -p)/../.." && pwd -P)"
+          for app in /Applications/Xcode*.app; do
+            if [ "$(cd "$app" && pwd -P)" != "$KEEP" ] && [ ! -L "$app" ]; then
+              sudo rm -rf "$app"
+            fi
+          done
+          sudo rm -rf "$HOME/Library/Android" /usr/local/share/dotnet "$HOME/.dotnet"
+          xcrun simctl runtime delete all || echo "::warning::Simulator runtimes were not deleted"
+          df -h "$GITHUB_WORKSPACE"
+
       - name: Install Metal toolchain
         run: |
           xcodebuild -downloadComponent MetalToolchain
@@ -150,9 +163,11 @@ jobs:
           if [ "$STATUS" -ne 0 ]; then
             grep -E -A3 '(^|: )(fatal )?error: |^ld: [^w]|^Undefined symbols|following build commands failed' build/archive.log | head -200 || true
             tail -40 build/archive.log
+            df -h "$GITHUB_WORKSPACE"
             exit "$STATUS"
           fi
           tail -3 build/archive.log
+          df -h "$GITHUB_WORKSPACE"
 
       - name: Sign the archive with its entitlements
         run: |
