@@ -790,6 +790,7 @@ public final class AccountControllerView : Control {
         statusContainer.addSubview(textView)
         edit.scaleOnClick = true
         qrCode.scaleOnClick = true
+        qrCode.setAccessibilityLabel(strings().voiceOverCommonQRCode)
     }
 
     public override func updateLocalizationAndTheme(theme: PresentationTheme) {
@@ -854,7 +855,7 @@ open class AccountViewController<Context: AccountContextProtocol> : TelegramGene
         super.updateContainerContentInsets(insets, transition: transition)
         if isLoaded() {
             tableView.contentInsets.bottom = insets.bottom
-            tableView.scrollerInsets.bottom = insets.bottom
+            tableView.scrollerInsets.bottom = 0
             searchController?.updateContainerContentInsets(insets, transition: transition)
         }
     }
