@@ -64,23 +64,15 @@ jobs:
       - name: Apply Xcode 27 adjustments
         run: bash scripts/xcode27.sh apply
 
-      - name: Write API credentials
-        env:
-          NAGRAM_API_ID: ${{ secrets.NAGRAM_API_ID }}
-          NAGRAM_API_HASH: ${{ secrets.NAGRAM_API_HASH }}
-        run: |
-          set -euo pipefail
-          : "${NAGRAM_API_ID:?NAGRAM_API_ID secret is missing}" "${NAGRAM_API_HASH:?NAGRAM_API_HASH secret is missing}"
-          printf 'NAGRAM_API_ID = %s\nNAGRAM_API_HASH = %s\n' "$NAGRAM_API_ID" "$NAGRAM_API_HASH" > Telegram-Mac/Nagram.local.xcconfig
-
       - name: Fingerprint native frameworks
         id: frameworks
         run: |
           set -euo pipefail
           echo "key=$( (git submodule status --recursive; cat scripts/framework-inputs.sh scripts/configure_frameworks.sh; find core-xprojects -name project.pbxproj -o -name build.sh | sort | xargs shasum) | shasum -a 256 | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
 
-      - name: Cache native frameworks
-        uses: actions/cache@v4
+      - name: Restore native frameworks
+        id: frameworks-cache
+        uses: actions/cache/restore@v4
         with:
           path: core-xprojects/*/build
           key: frameworks-${{ steps.xcode.outputs.build }}-${{ steps.frameworks.outputs.key }}
@@ -88,6 +80,14 @@ jobs:
 
       - name: Build native frameworks
         run: bash scripts/configure_frameworks.sh
+
+      - name: Save native frameworks
+        if: steps.frameworks-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: core-xprojects/*/build
+          key: frameworks-${{ steps.xcode.outputs.build }}-${{ steps.frameworks.outputs.key }}
+
 
       - name: Set up App Store Connect API key
         env:
@@ -112,6 +112,15 @@ jobs:
             test "$(plutil -extract CFBundleVersion raw "$plist")" = "$BUILD_NUMBER"
           done
           echo "BUILD_NUMBER=$BUILD_NUMBER" >> "$GITHUB_ENV"
+
+      - name: Write API credentials
+        env:
+          NAGRAM_API_ID: ${{ secrets.NAGRAM_API_ID }}
+          NAGRAM_API_HASH: ${{ secrets.NAGRAM_API_HASH }}
+        run: |
+          set -euo pipefail
+          : "${NAGRAM_API_ID:?NAGRAM_API_ID secret is missing}" "${NAGRAM_API_HASH:?NAGRAM_API_HASH secret is missing}"
+          printf 'NAGRAM_API_ID = %s\nNAGRAM_API_HASH = %s\n' "$NAGRAM_API_ID" "$NAGRAM_API_HASH" > Telegram-Mac/Nagram.local.xcconfig
 
       - name: Archive
         run: |
