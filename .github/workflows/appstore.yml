@@ -55,7 +55,7 @@ jobs:
       - name: Install build tools
         run: |
           set -euo pipefail
-          brew install meson ninja yasm cmake
+          brew install nasm yasm meson ninja cmake autoconf automake libtool pkgconf
           if ! command -v rustup >/dev/null 2>&1; then
             curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --profile minimal
             echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
