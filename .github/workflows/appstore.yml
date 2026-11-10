@@ -1,0 +1,198 @@
+name: Mac App Store
+
+on:
+  workflow_dispatch:
+    inputs:
+      upload:
+        description: Upload the build to App Store Connect (TestFlight)
+        type: boolean
+        default: true
+
+concurrency:
+  group: appstore
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: xcode-27
+    timeout-minutes: 360
+    env:
+      LANG: en_US.UTF-8
+      LC_ALL: en_US.UTF-8
+      XCODE_VERSION: "27.2"
+      APPSTORE_ID: "6781000861"
+      TEAM_ID: 7P8CLHDH5G
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      CMAKE_POLICY_VERSION_MINIMUM: "3.5"
+      CARGO_PROFILE_RELEASE_BUILD_OVERRIDE_STRIP: "false"
+      ARCHIVE: ${{ github.workspace }}/build/Nagram.xcarchive
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Select Xcode
+        id: xcode
+        run: |
+          set -euo pipefail
+          XCODE_PATH="/Applications/Xcode_${XCODE_VERSION}.app/Contents/Developer"
+          test -d "$XCODE_PATH"
+          sudo xcode-select -s "$XCODE_PATH"
+          xcodebuild -version
+          echo "build=$(xcodebuild -version | awk '/^Build version / {print $3}')" >> "$GITHUB_OUTPUT"
+          df -h "$GITHUB_WORKSPACE"
+
+      - name: Install Metal toolchain
+        run: |
+          xcodebuild -downloadComponent MetalToolchain
+          xcrun --find metal
+
+      - name: Install build tools
+        run: |
+          set -euo pipefail
+          brew install meson ninja yasm cmake
+          if ! command -v rustup >/dev/null 2>&1; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --profile minimal
+            echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          fi
+
+      - name: Apply Xcode 27 adjustments
+        run: bash scripts/xcode27.sh apply
+
+      - name: Write API credentials
+        env:
+          NAGRAM_API_ID: ${{ secrets.NAGRAM_API_ID }}
+          NAGRAM_API_HASH: ${{ secrets.NAGRAM_API_HASH }}
+        run: |
+          set -euo pipefail
+          : "${NAGRAM_API_ID:?NAGRAM_API_ID secret is missing}" "${NAGRAM_API_HASH:?NAGRAM_API_HASH secret is missing}"
+          printf 'NAGRAM_API_ID = %s\nNAGRAM_API_HASH = %s\n' "$NAGRAM_API_ID" "$NAGRAM_API_HASH" > Telegram-Mac/Nagram.local.xcconfig
+
+      - name: Fingerprint native frameworks
+        id: frameworks
+        run: |
+          set -euo pipefail
+          echo "key=$( (git submodule status --recursive; cat scripts/framework-inputs.sh scripts/configure_frameworks.sh; find core-xprojects -name project.pbxproj -o -name build.sh | sort | xargs shasum) | shasum -a 256 | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache native frameworks
+        uses: actions/cache@v4
+        with:
+          path: core-xprojects/*/build
+          key: frameworks-${{ steps.xcode.outputs.build }}-${{ steps.frameworks.outputs.key }}
+          restore-keys: frameworks-${{ steps.xcode.outputs.build }}-
+
+      - name: Build native frameworks
+        run: bash scripts/configure_frameworks.sh
+
+      - name: Set up App Store Connect API key
+        env:
+          ASC_KEY_P8_BASE64: ${{ secrets.ASC_KEY_P8_BASE64 }}
+        run: |
+          set -euo pipefail
+          : "${ASC_KEY_ID:?missing}" "${ASC_ISSUER_ID:?missing}" "${ASC_KEY_P8_BASE64:?missing}"
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "$ASC_KEY_P8_BASE64" | base64 --decode > ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8
+          chmod 600 ~/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8
+          echo "ASC_KEY_PATH=$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8" >> "$GITHUB_ENV"
+
+      - name: Choose the build number
+        run: |
+          set -euo pipefail
+          PLIST_BUILD="$(plutil -extract CFBundleVersion raw Telegram-Mac/Info.plist)"
+          LATEST="$(python3 scripts/nagram/asc_latest_build.py)"
+          BUILD_NUMBER=$(( LATEST + 1 > PLIST_BUILD ? LATEST + 1 : PLIST_BUILD ))
+          echo "Info.plist: $PLIST_BUILD, App Store Connect: $LATEST, using $BUILD_NUMBER"
+          for plist in Telegram-Mac/Info.plist TelegramShare/Info.plist; do
+            sed -i '' "/<key>CFBundleVersion<\/key>/{n;s/<string>[0-9]*<\/string>/<string>$BUILD_NUMBER<\/string>/;}" "$plist"
+            test "$(plutil -extract CFBundleVersion raw "$plist")" = "$BUILD_NUMBER"
+          done
+          echo "BUILD_NUMBER=$BUILD_NUMBER" >> "$GITHUB_ENV"
+
+      - name: Archive
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          set +e
+          xcodebuild archive \
+            -workspace Telegram-Mac.xcworkspace \
+            -scheme Release \
+            -configuration Release \
+            -derivedDataPath build/DerivedData \
+            -archivePath "$ARCHIVE" \
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            SOURCE=APP_STORE \
+            'OTHER_SWIFT_FLAGS=$(inherited) -DAPP_STORE' \
+            'SWIFT_ACTIVE_COMPILATION_CONDITIONS=$(inherited) APP_STORE' \
+            CODE_SIGNING_ALLOWED=NO > build/archive.log 2>&1
+          STATUS=$?
+          set -e
+          if [ "$STATUS" -ne 0 ]; then
+            grep -E -A3 '(^|: )(fatal )?error: |^ld: [^w]|^Undefined symbols|following build commands failed' build/archive.log | head -200 || true
+            tail -40 build/archive.log
+            exit "$STATUS"
+          fi
+          tail -3 build/archive.log
+
+      - name: Sign the archive with its entitlements
+        run: |
+          set -euo pipefail
+          APP="$ARCHIVE/Products/Applications/Telegram.app"
+          codesign -f -s - --entitlements TelegramShare/TelegramShare.entitlements "$APP/Contents/PlugIns/TelegramShare.appex"
+          codesign -f -s - --entitlements Telegram-Mac/Telegram-Sandbox.entitlements "$APP"
+          codesign --verify --deep --strict "$APP"
+          plutil -p "$APP/Contents/Info.plist" | grep -E '"CFBundle(ShortVersionString|Version)"'
+
+      - name: Export and upload
+        run: |
+          set -euo pipefail
+          if [ "${{ inputs.upload }}" = "true" ]; then DESTINATION="upload"; else DESTINATION="export"; fi
+          cat > build/ExportOptions.plist <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>app-store-connect</string>
+              <key>destination</key>
+              <string>$DESTINATION</string>
+              <key>signingStyle</key>
+              <string>automatic</string>
+              <key>teamID</key>
+              <string>$TEAM_ID</string>
+              <key>uploadSymbols</key>
+              <true/>
+              <key>manageAppVersionAndBuildNumber</key>
+              <false/>
+          </dict>
+          </plist>
+          PLIST
+          xcodebuild -exportArchive \
+            -archivePath "$ARCHIVE" \
+            -exportPath build/export \
+            -exportOptionsPlist build/ExportOptions.plist \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+
+      - name: Upload the package
+        if: ${{ !inputs.upload }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: Nagram-${{ env.BUILD_NUMBER }}-appstore
+          path: build/export/*.pkg
+
+      - name: Upload logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs
+          path: |
+            build/archive.log
+            /var/folders/**/*.xcdistributionlogs
+          if-no-files-found: ignore
