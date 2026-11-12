@@ -25,7 +25,7 @@ public struct NagramService: Equatable {
     public var temperature: Double?
 
     public static let llmProtocols = ["openai", "anthropic"]
-    public static let translationProtocols = ["deepl", "google", "microsoft", "yandex"]
+    public static let translationProtocols = ["deepl", "deeplx", "google", "microsoft", "yandex"]
 
     public var isLlm: Bool {
         return NagramService.llmProtocols.contains(self.protocol)
@@ -133,6 +133,7 @@ public struct NagramServicePreset {
         .init(id: "siliconflow", name: "SiliconFlow", kind: .translation, protocol: "openai", baseUrl: "https://api.siliconflow.cn/v1/", endpoint: "chat/completions"),
         .init(id: "anthropic", name: "Anthropic", kind: .translation, protocol: "anthropic", baseUrl: "https://api.anthropic.com/v1/", endpoint: "messages"),
         .init(id: "deepl", name: "DeepL", kind: .translation, protocol: "deepl", baseUrl: "https://api.deepl.com/v2/", endpoint: "translate"),
+        .init(id: "deeplx", name: "DeepLX", kind: .translation, protocol: "deeplx", baseUrl: "http://127.0.0.1:1188/", endpoint: "translate"),
         .init(id: "google", name: "Google Cloud Translation", kind: .translation, protocol: "google", baseUrl: "https://translation.googleapis.com/", endpoint: "language/translate/v2"),
         .init(id: "microsoft", name: "Microsoft Translator", kind: .translation, protocol: "microsoft", baseUrl: "https://api.cognitive.microsofttranslator.com/", endpoint: "translate"),
         .init(id: "yandex", name: "Yandex Translate", kind: .translation, protocol: "yandex", baseUrl: "https://translate.api.cloud.yandex.net/", endpoint: "translate/v2/translate"),
@@ -140,7 +141,7 @@ public struct NagramServicePreset {
     ]
 
     public func make() -> NagramService {
-        return NagramService(name: name, kind: kind, protocol: self.protocol, baseUrl: baseUrl, endpoint: endpoint)
+        return NagramService(name: name, kind: kind, protocol: self.protocol, baseUrl: baseUrl, endpoint: endpoint, useKey: self.protocol != "deeplx")
     }
 }
 
@@ -381,6 +382,9 @@ public enum NagramServiceClient {
     }
 
     public static func translate(_ texts: [String], to language: String, service: NagramService, context: [String] = []) -> Signal<[String], NagramServiceError> {
+        if service.protocol == "deeplx" {
+            return translateEach(texts, to: language, service: service)
+        }
         var body: Any
         var query: [URLQueryItem] = []
         switch service.protocol {
@@ -432,6 +436,31 @@ public enum NagramServiceClient {
             }
             return .single(strings)
         }
+    }
+
+    private static func translateEach(_ texts: [String], to language: String, service: NagramService) -> Signal<[String], NagramServiceError> {
+        var signal: Signal<[String], NagramServiceError> = .single([])
+        for text in texts {
+            signal = signal |> mapToSignal { done -> Signal<[String], NagramServiceError> in
+                var object: [String: Any] = ["text": text, "target_lang": language.uppercased()]
+                if !service.model.isEmpty {
+                    object["formality"] = service.model
+                }
+                return request(service, body: object) |> mapToSignal { data -> Signal<[String], NagramServiceError> in
+                    guard let root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
+                        return .fail(.badResponse)
+                    }
+                    if let code = root["code"] as? Int, code != 200 {
+                        return .fail(.badResponse)
+                    }
+                    guard let result = root["data"] as? String, !result.isEmpty else {
+                        return .fail(.badResponse)
+                    }
+                    return .single(done + [result])
+                }
+            }
+        }
+        return signal
     }
 
     public static func complete(system: String, user: String, service: NagramService) -> Signal<String, NagramServiceError> {

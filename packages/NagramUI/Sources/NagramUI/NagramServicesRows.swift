@@ -70,7 +70,7 @@ private func serviceRows(_ id: String) -> [NagramRow] {
     rows.append(.boundText(id: "service.\(id).endpoint", title: nagramString("lng_nagram_service_endpoint"), get: { service(id)?.endpoint ?? "" }, set: { value in updateService(id) { $0.endpoint = value } }))
     let modelTitle: String
     switch initial.protocol {
-    case "deepl":
+    case "deepl", "deeplx":
         modelTitle = nagramString("lng_nagram_service_formality")
     case "microsoft":
         modelTitle = nagramString("lng_nagram_service_region")
