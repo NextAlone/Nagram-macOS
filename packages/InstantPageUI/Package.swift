@@ -31,6 +31,7 @@ let package = Package(
         .package(name: "ChatModeTypes", path: "../ChatModeTypes"),
         .package(name: "InlineStickerLayer", path: "../InlineStickerLayer"),
         .package(name: "rnoise", path: "../../submodules/telegram-ios/third-party/rnnoise"),
+        .package(name: "NagramCore", path: "../NagramCore"),
     ],
     targets: [
         .target(
@@ -57,6 +58,7 @@ let package = Package(
                 .product(name: "RangeSet", package: "RangeSet", condition: nil),
                 .product(name: "ChatModeTypes", package: "ChatModeTypes", condition: nil),
                 .product(name: "InlineStickerLayer", package: "InlineStickerLayer", condition: nil),
+                .product(name: "NagramCore", package: "NagramCore", condition: nil),
             ],
             path: "Sources/InstantPageUI"),
         .testTarget(

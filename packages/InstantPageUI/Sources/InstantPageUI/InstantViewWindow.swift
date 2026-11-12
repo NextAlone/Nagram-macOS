@@ -16,12 +16,16 @@ private final class InstantViewArguments {
     let back:()->Void
     let openInSafari:()->Void
     let enableSansSerif:(Bool)->Void
-    init(context: any AccountContextProtocol, share: @escaping()->Void, back: @escaping()->Void, openInSafari: @escaping()->Void, enableSansSerif:@escaping(Bool)->Void) {
+    let translationTitle:()->String?
+    let toggleTranslation:()->Void
+    init(context: any AccountContextProtocol, share: @escaping()->Void, back: @escaping()->Void, openInSafari: @escaping()->Void, enableSansSerif:@escaping(Bool)->Void, translationTitle: @escaping()->String?, toggleTranslation: @escaping()->Void) {
         self.context = context
         self.share = share
         self.back = back
         self.enableSansSerif = enableSansSerif
         self.openInSafari = openInSafari
+        self.translationTitle = translationTitle
+        self.toggleTranslation = toggleTranslation
     }
 }
 
@@ -76,8 +80,15 @@ private class HeaderView : View {
                 items.append(SPopoverItem("Georgia", { [weak strongSelf] in
                     strongSelf?.arguments?.enableSansSerif(true)
                 }, !strongSelf.presenation.fontSerif ? nil : theme.icons.instantViewCheck))
+
+                // MARK: NAGRAM
+                if let title = strongSelf.arguments?.translationTitle() {
+                    items.append(SPopoverItem(title, { [weak strongSelf] in
+                        strongSelf?.arguments?.toggleTranslation()
+                    }))
+                }
                 
-                showPopover(for: control, with: SPopoverViewController(items: items), edge: .maxY, inset: NSMakePoint(-80,  control.frame.height + 80))
+                showPopover(for: control, with: SPopoverViewController(items: items), edge: .maxY, inset: NSMakePoint(-80,  control.frame.height + CGFloat(items.count) * 40))
             }
             
         }, for: .Click)
@@ -298,6 +309,13 @@ class InstantViewController : GenericViewController<InstantWindowContentView> {
             if let strongSelf = self {
                 _ = updateInstantViewAppearanceSettingsInteractively(postbox: strongSelf.context.account.postbox, {$0.withUpdatedFontSerif(enable)}).start()
             }
+        }, translationTitle: { [weak self] in
+            guard let page = self?.navigation.controller as? InstantPageViewController, page.nagramCanTranslate, !page.nagramTranslating else {
+                return nil
+            }
+            return page.nagramShowsTranslation ? strings().chatTranslateShowOriginal : strings().chatContextTranslate
+        }, toggleTranslation: { [weak self] in
+            (self?.navigation.controller as? InstantPageViewController)?.nagramToggleTranslation()
         })
 
         genericView.arguments = arguments

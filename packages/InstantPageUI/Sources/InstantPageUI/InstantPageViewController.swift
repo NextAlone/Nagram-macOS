@@ -120,6 +120,16 @@ public class InstantPageViewController: GenericViewController<ScrollView> {
     
     
     public func updateWebPage(_ webPage: TelegramMediaWebpage, anchor: String?, state: InstantPageStoredState? = nil) {
+        // MARK: NAGRAM
+        if let original = nagramOriginal {
+            if original == webPage {
+                self.readyOnce()
+                return
+            }
+            nagramResetTranslation()
+        } else if self.webPage != webPage {
+            nagramResetTranslation()
+        }
         if self.webPage != webPage {
             
             self.webPage = webPage
@@ -152,6 +162,84 @@ public class InstantPageViewController: GenericViewController<ScrollView> {
     }
 
     
+    // MARK: NAGRAM
+    private var nagramOriginal: TelegramMediaWebpage?
+    private var nagramTranslated: TelegramMediaWebpage?
+    private let nagramTranslateDisposable = MetaDisposable()
+    public private(set) var nagramTranslating = false
+
+    public var nagramShowsTranslation: Bool {
+        return nagramOriginal != nil
+    }
+
+    public var nagramCanTranslate: Bool {
+        if case let .Loaded(content) = webPage.content, content.instantPage != nil {
+            return true
+        }
+        return false
+    }
+
+    private func nagramResetTranslation() {
+        nagramTranslateDisposable.set(nil)
+        nagramTranslating = false
+        nagramOriginal = nil
+        nagramTranslated = nil
+    }
+
+    private func nagramShow(_ webPage: TelegramMediaWebpage) {
+        let oldHeight = max(documentView.frame.height, 1)
+        let offset = genericView.contentOffset.y
+        self.webPage = webPage
+        reloadData()
+        let newY = floor(offset * documentView.frame.height / oldHeight)
+        genericView.clipView.scroll(to: CGPoint(x: 0, y: max(0, min(newY, documentView.frame.height - genericView.frame.height))), animated: false)
+    }
+
+    public func nagramToggleTranslation() {
+        if let original = nagramOriginal {
+            nagramOriginal = nil
+            nagramShow(original)
+            return
+        }
+        if let translated = nagramTranslated {
+            nagramOriginal = webPage
+            nagramShow(translated)
+            return
+        }
+        guard !nagramTranslating, case let .Loaded(content) = webPage.content, let page = content.instantPage?._parse() else {
+            return
+        }
+        nagramTranslating = true
+        let source = webPage
+        nagramTranslateDisposable.set((nagramTranslatePage(page, to: appAppearance.languageCode, context: context) |> deliverOnMainQueue).start(next: { [weak self] translated in
+            guard let self = self, self.webPage == source else {
+                return
+            }
+            self.nagramTranslating = false
+            guard let translated = translated, let updated = nagramWebpage(source, replacing: translated) else {
+                return
+            }
+            self.nagramTranslated = updated
+            self.nagramOriginal = source
+            self.nagramShow(updated)
+        }, error: { [weak self] error in
+            guard let self = self else {
+                return
+            }
+            self.nagramTranslating = false
+            let text: String
+            switch error {
+            case let .service(value):
+                text = value
+            case .telegram:
+                text = strings().unknownError
+            }
+            if let window = self.window {
+                showModalText(for: window, text: text)
+            }
+        }))
+    }
+
     private func updateLayout() {
         let currentLayout = instantPageLayoutForWebPage(webPage, boundingWidth: frame.width, safeInset: 0, theme: instantPageThemeForType(theme.insantPageThemeType, settings: appearance), webEmbedHeights: self.currentWebEmbedHeights)
         
@@ -909,6 +997,7 @@ public class InstantPageViewController: GenericViewController<ScrollView> {
             NotificationCenter.default.removeObserver(boundsObserver)
         }
         selectManager?.removeHandlers(for: mainWindow)
+        nagramTranslateDisposable.dispose()
         joinDisposable.dispose()
         actualizeDisposable.dispose()
         saveProgressDisposable.dispose()
