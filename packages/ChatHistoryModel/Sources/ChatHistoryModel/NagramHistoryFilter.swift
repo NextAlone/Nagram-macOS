@@ -59,3 +59,36 @@ func nagramFilteredMessage(_ message: Message, accountPeerId: PeerId?) -> Messag
     }
     return message.withUpdatedText(text).withUpdatedAttributes(attributes)
 }
+
+public func nagramReadingQuoteSource(_ original: Message, accountPeerId: PeerId?, shown: NSRange) -> (text: String, offset: Int, entities: [MessageTextEntity])? {
+    let account = accountPeerId?.toInt64() ?? NagramSettings.shared.currentAccount
+    if original.text.isEmpty || NagramHiddenMessages.contains(peerId: original.id.peerId.toInt64(), messageId: original.id.id, account: account) {
+        return nil
+    }
+    let outgoing = !original.flags.contains(.Incoming)
+    let author = original.author.map { String($0.id.toInt64()) } ?? ""
+    let result = NagramFilter.run(text: original.text, author: author, peer: String(original.id.peerId.toInt64()), blocked: false, outgoing: outgoing, account: account)
+    if result.hidden || result.changed {
+        return nil
+    }
+    let entities = original.textEntitiesAttribute?.entities ?? []
+    let reading = NagramText.readingStages(original.text, codeRanges: codeRanges(entities))
+    if reading.isEmpty {
+        return nil
+    }
+    let text = original.text as NSString
+    var range = NagramText.sourceRange(shown, stages: reading)
+    guard range.location + range.length <= text.length else {
+        return nil
+    }
+    while range.length > 0, let scalar = UnicodeScalar(text.character(at: range.location)), CharacterSet.whitespacesAndNewlines.contains(scalar) {
+        range = NSRange(location: range.location + 1, length: range.length - 1)
+    }
+    while range.length > 0, let scalar = UnicodeScalar(text.character(at: range.location + range.length - 1)), CharacterSet.whitespacesAndNewlines.contains(scalar) {
+        range.length -= 1
+    }
+    if range.length == 0 {
+        return nil
+    }
+    return (text: text.substring(with: range), offset: range.location, entities: messageTextEntitiesInRange(entities: entities, range: range, onlyQuoteable: true))
+}

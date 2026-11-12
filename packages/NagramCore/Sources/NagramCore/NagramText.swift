@@ -127,6 +127,32 @@ public enum NagramText {
         return current
     }
 
+    private static func sourcePosition(_ position: Int, edits: [NagramTextEdit], end: Bool) -> Int {
+        var delta = 0
+        for edit in edits.sorted(by: { $0.range.location < $1.range.location }) {
+            let start = edit.range.location + delta
+            let length = (edit.replacement as NSString).length
+            if end ? position <= start : position < start {
+                return position - delta
+            }
+            if end ? position <= start + length : position < start + length {
+                return end ? edit.range.location + edit.range.length : edit.range.location
+            }
+            delta += length - edit.range.length
+        }
+        return position - delta
+    }
+
+    public static func sourceRange(_ shown: NSRange, stages: [[NagramTextEdit]]) -> NSRange {
+        var lower = shown.location
+        var upper = shown.location + shown.length
+        for stage in stages.reversed() {
+            lower = sourcePosition(lower, edits: stage, end: false)
+            upper = max(lower, sourcePosition(upper, edits: stage, end: true))
+        }
+        return NSRange(location: lower, length: upper - lower)
+    }
+
     public static func remap(_ range: Range<Int>, stages: [[NagramTextEdit]]) -> Range<Int>? {
         var current: Range<Int>? = range
         for stage in stages {

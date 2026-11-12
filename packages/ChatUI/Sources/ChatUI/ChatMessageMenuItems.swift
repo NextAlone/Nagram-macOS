@@ -621,16 +621,35 @@ public func chatMenuItems(for message: Message, entry: ChatHistoryEntry?, textLa
             firstBlock.append(ContextMenuItem(strings().chatMessageContextQuote, handler: {
 
                 let quote_length_max = context.appConfiguration.getGeneralValue("quote_length_max", orElse: 1024)
-                if selectedString.length > quote_length_max {
-                    alert(for: context.window, info: strings().chatMessageContextQuoteLimitExceed)
-                } else {
-                    let attributed = enititesAttributedStringForText(selectedString).trimmed
-                    let entities = messageTextEntitiesInRange(entities: ChatTextInputState(attributedText: attributed, selectionRange: 0..<0).messageTextEntities(), range: attributed.range, onlyQuoteable: true)
+                let setupShownQuote = {
+                    if selectedString.length > quote_length_max {
+                        alert(for: context.window, info: strings().chatMessageContextQuoteLimitExceed)
+                    } else {
+                        let attributed = enititesAttributedStringForText(selectedString).trimmed
+                        let entities = messageTextEntitiesInRange(entities: ChatTextInputState(attributedText: attributed, selectionRange: 0..<0).messageTextEntities(), range: attributed.range, onlyQuoteable: true)
 
-                    let quote = EngineMessageReplyQuote(text: attributed.string, offset: selectedRange.location, entities: entities, media: message.media.first)
-                    chatInteraction.setupReplyMessage(message, .init(messageId: message.id, quote: quote, innerSubject: nil))
+                        let quote = EngineMessageReplyQuote(text: attributed.string, offset: selectedRange.location, entities: entities, media: message.media.first)
+                        chatInteraction.setupReplyMessage(message, .init(messageId: message.id, quote: quote, innerSubject: nil))
 
+                    }
                 }
+                // MARK: NAGRAM
+                guard NagramOptions.readingSpacing.value || NagramOptions.readingChinese.value != 0 else {
+                    setupShownQuote()
+                    return
+                }
+                _ = (context.account.postbox.transaction { $0.getMessage(message.id) } |> deliverOnMainQueue).start(next: { original in
+                    guard let original = original, let source = nagramReadingQuoteSource(original, accountPeerId: context.peerId, shown: selectedRange) else {
+                        setupShownQuote()
+                        return
+                    }
+                    if (source.text as NSString).length > quote_length_max {
+                        alert(for: context.window, info: strings().chatMessageContextQuoteLimitExceed)
+                    } else {
+                        let quote = EngineMessageReplyQuote(text: source.text, offset: source.offset, entities: source.entities, media: message.media.first)
+                        chatInteraction.setupReplyMessage(message, .init(messageId: message.id, quote: quote, innerSubject: nil))
+                    }
+                })
 
             }, itemImage: MenuAnimation.menu_quote.value))
         }
