@@ -36,8 +36,8 @@ private func validatePattern(_ pattern: String) -> String? {
 private func ruleRows(_ id: String) -> [NagramRow] {
     var rows: [NagramRow] = []
     rows.append(.boundToggle(id: "filter.\(id).enabled", title: nagramString("lng_nagram_filter_rule_enabled"), get: { rule(id)?.enabled ?? false }, set: { value in updateRule(id) { $0.enabled = value } }))
-    rows.append(.boundText(id: "filter.\(id).title", title: nagramString("lng_nagram_filter_title"), get: { rule(id)?.title ?? "" }, set: { value in updateRule(id) { $0.title = value } }, validate: { $0.isEmpty || $0.count > 128 ? nagramString("lng_nagram_filter_title") : nil }))
-    rows.append(.boundText(id: "filter.\(id).pattern", title: nagramString("lng_nagram_filter_pattern"), get: { rule(id)?.pattern ?? "" }, set: { value in updateRule(id) { $0.pattern = value } }, validate: validatePattern))
+    rows.append(.boundText(id: "filter.\(id).title", title: nagramString("lng_nagram_filter_title"), get: { rule(id)?.title ?? "" }, set: { value in updateRule(id) { $0.title = value } }, validate: { $0.isEmpty || $0.count > NagramFilterRule.maxTitleLength ? nagramString("lng_nagram_filter_title") : nil }, limit: Int32(NagramFilterRule.maxTitleLength)))
+    rows.append(.boundText(id: "filter.\(id).pattern", title: nagramString("lng_nagram_filter_pattern"), get: { rule(id)?.pattern ?? "" }, set: { value in updateRule(id) { $0.pattern = value } }, validate: validatePattern, limit: Int32(NagramFilterRule.maxPatternLength)))
     rows.append(.boundChoice(id: "filter.\(id).action", title: nagramString("lng_nagram_filter_rule"), choices: [
         NagramChoice(0, nagramString("lng_nagram_filter_hide")),
         NagramChoice(1, nagramString("lng_nagram_filter_mask")),
@@ -59,7 +59,7 @@ private func ruleRows(_ id: String) -> [NagramRow] {
             }
         }
     }))
-    rows.append(.boundText(id: "filter.\(id).replacement", title: nagramString("lng_nagram_filter_replacement"), get: { rule(id)?.replacement ?? "" }, set: { value in updateRule(id) { $0.replacement = value } }, visible: { rule(id)?.action == .replace }))
+    rows.append(.boundText(id: "filter.\(id).replacement", title: nagramString("lng_nagram_filter_replacement"), get: { rule(id)?.replacement ?? "" }, set: { value in updateRule(id) { $0.replacement = value } }, limit: Int32(NagramFilterRule.maxReplacementLength), visible: { rule(id)?.action == .replace }))
     rows.append(.boundToggle(id: "filter.\(id).case", title: nagramString("lng_nagram_filter_case"), get: { rule(id)?.caseInsensitive ?? true }, set: { value in updateRule(id) { $0.caseInsensitive = value } }))
     rows.append(.boundToggle(id: "filter.\(id).reversed", title: nagramString("lng_nagram_filter_reverse"), get: { rule(id)?.reversed ?? false }, set: { value in updateRule(id) { $0.reversed = value } }, visible: { rule(id)?.action == .hide }))
     rows.append(.header(""))
@@ -89,7 +89,7 @@ func nagramFilterRows() -> [NagramRow] {
     }
     if current().rules.count < NagramFilterConfig.maxRules {
         rows.append(.action(title: nagramString("lng_nagram_filter_add"), run: { context in
-            let controller = NagramTextInputController(title: nagramString("lng_nagram_filter_pattern"), value: "", placeholder: "spam|ads", validate: validatePattern, save: { pattern in
+            let controller = NagramTextInputController(title: nagramString("lng_nagram_filter_pattern"), value: "", placeholder: "spam|ads", validate: validatePattern, limit: Int32(NagramFilterRule.maxPatternLength), save: { pattern in
                 let newRule = NagramFilterRule(title: pattern.count > 32 ? String(pattern.prefix(32)) : pattern, pattern: pattern, enabled: true)
                 updateFilters { $0.rules.append(newRule) }
             })

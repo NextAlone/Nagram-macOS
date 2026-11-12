@@ -29,13 +29,13 @@ public enum NagramRow {
     case action(title: String, value: (() -> String?)? = nil, info: String? = nil, destructive: Bool = false, visible: (() -> Bool)? = nil, run: (NagramActionContext) -> Void)
     case boundToggle(id: String, title: String, info: String? = nil, get: () -> Bool, set: (Bool) -> Void, visible: (() -> Bool)? = nil)
     case boundChoice(id: String, title: String, choices: [NagramChoice<Int>], get: () -> Int, set: (Int) -> Void, visible: (() -> Bool)? = nil)
-    case boundText(id: String, title: String, placeholder: String = "", info: String? = nil, get: () -> String, set: (String) -> Void, validate: ((String) -> String?)? = nil, visible: (() -> Bool)? = nil)
+    case boundText(id: String, title: String, placeholder: String = "", info: String? = nil, get: () -> String, set: (String) -> Void, validate: ((String) -> String?)? = nil, limit: Int32 = 1024, visible: (() -> Bool)? = nil)
 
     var isVisible: Bool {
         switch self {
         case .header, .footer:
             return true
-        case let .toggle(_, _, _, visible, _), let .choice(_, _, _, _, visible), let .stringChoice(_, _, _, _, visible), let .text(_, _, _, _, _, visible), let .page(_, _, _, visible, _), let .action(_, _, _, _, visible, _), let .boundToggle(_, _, _, _, _, visible), let .boundText(_, _, _, _, _, _, _, visible), let .boundChoice(_, _, _, _, _, visible):
+        case let .toggle(_, _, _, visible, _), let .choice(_, _, _, _, visible), let .stringChoice(_, _, _, _, visible), let .text(_, _, _, _, _, visible), let .page(_, _, _, visible, _), let .action(_, _, _, _, visible, _), let .boundToggle(_, _, _, _, _, visible), let .boundText(_, _, _, _, _, _, _, _, visible), let .boundChoice(_, _, _, _, _, visible):
             return visible?() ?? true
         }
     }
@@ -52,7 +52,7 @@ public enum NagramRow {
             return option.key
         case let .page(title, _, _, _, _), let .action(title, _, _, _, _, _):
             return title
-        case let .boundToggle(id, _, _, _, _, _), let .boundText(id, _, _, _, _, _, _, _), let .boundChoice(id, _, _, _, _, _):
+        case let .boundToggle(id, _, _, _, _, _), let .boundText(id, _, _, _, _, _, _, _, _), let .boundChoice(id, _, _, _, _, _):
             return id
         case .header, .footer:
             return nil
@@ -69,7 +69,7 @@ public enum NagramRow {
             return title ?? nagramString(option.titleKey)
         case let .text(option, title, _, _, _, _):
             return title ?? nagramString(option.titleKey)
-        case let .page(title, _, _, _, _), let .action(title, _, _, _, _, _), let .boundToggle(_, title, _, _, _, _), let .boundText(_, title, _, _, _, _, _, _), let .boundChoice(_, title, _, _, _, _):
+        case let .page(title, _, _, _, _), let .action(title, _, _, _, _, _), let .boundToggle(_, title, _, _, _, _), let .boundText(_, title, _, _, _, _, _, _, _), let .boundChoice(_, title, _, _, _, _):
             return title
         case .header, .footer:
             return nil

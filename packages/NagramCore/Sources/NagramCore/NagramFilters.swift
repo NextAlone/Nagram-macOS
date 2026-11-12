@@ -42,8 +42,12 @@ public struct NagramFilterRule: Equatable {
         return NagramRegexCache.shared.expression(pattern, caseInsensitive: caseInsensitive)
     }
 
+    public static let maxTitleLength = 128
+    public static let maxPatternLength = 2048
+    public static let maxReplacementLength = 4096
+
     public var isValid: Bool {
-        return !title.isEmpty && title.count <= 128 && !pattern.isEmpty && pattern.count <= 2048 && replacement.count <= 4096 && (!reversed || action == .hide) && expression != nil
+        return !title.isEmpty && title.count <= NagramFilterRule.maxTitleLength && !pattern.isEmpty && pattern.count <= NagramFilterRule.maxPatternLength && replacement.count <= NagramFilterRule.maxReplacementLength && (!reversed || action == .hide) && expression != nil
     }
 }
 

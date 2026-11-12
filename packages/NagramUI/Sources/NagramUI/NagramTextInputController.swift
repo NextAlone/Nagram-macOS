@@ -15,7 +15,7 @@ public func NagramTextInputController(title: String, value: String, placeholder:
     let signal = errorValue.get() |> deliverOnPrepareQueue |> map { error -> InputDataSignalValue in
         var entries: [InputDataEntry] = []
         entries.append(.sectionId(0, type: .normal))
-        entries.append(.input(sectionId: 1, index: 0, value: .string(value), error: error.map { InputDataValueError(description: $0, target: .data) }, identifier: _id_value, mode: secure ? .secure : .plain, data: .init(viewType: .singleItem, defaultText: value), placeholder: nil, inputPlaceholder: placeholder, filter: { $0 }, limit: limit))
+        entries.append(.input(sectionId: 1, index: 0, value: .string(value), error: error.map { InputDataValueError(description: $0, target: .data) }, identifier: _id_value, mode: secure ? .secure : .plain, data: .init(viewType: .singleItem), placeholder: nil, inputPlaceholder: placeholder, filter: { $0 }, limit: limit))
         entries.append(.sectionId(1, type: .normal))
         return InputDataSignalValue(entries: entries)
     }

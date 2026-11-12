@@ -143,11 +143,11 @@ private func entries(_ section: NagramSection, state: State, arguments: Argument
                     }, state: choice.value == current ? .on : nil)
                 }
                 entries.append(.general(sectionId: sectionId, index: index, value: .none, error: nil, identifier: _id_row(id), data: .init(name: title, color: theme.colors.text, type: .contextSelector(valueTitle(choices, current), items), viewType: viewType)))
-            case let .boundText(id, title, placeholder, info, get, set, validate, _):
+            case let .boundText(id, title, placeholder, info, get, set, validate, limit, _):
                 let current = get()
                 let shown = current.isEmpty ? nagramString("lng_nagram_external_url_default") : current.replacingOccurrences(of: "\n", with: ", ")
                 entries.append(.general(sectionId: sectionId, index: index, value: .none, error: nil, identifier: _id_row(id), data: .init(name: title, color: theme.colors.text, type: .nextContext(shown.count > 40 ? String(shown.prefix(40)) + "…" : shown), viewType: viewType, description: info, action: {
-                    let controller = NagramTextInputController(title: title, value: get(), placeholder: placeholder, validate: validate, multiline: true, save: { value in
+                    let controller = NagramTextInputController(title: title, value: get(), placeholder: placeholder, validate: validate, multiline: true, limit: limit, save: { value in
                         set(value)
                         arguments.changed(false)
                     })
