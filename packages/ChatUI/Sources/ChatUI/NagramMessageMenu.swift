@@ -64,7 +64,7 @@ private func nagramShowText(_ context: any AccountContextProtocol, _ text: Strin
     showModalText(for: context.window, text: text)
 }
 
-func nagramMessageMenuItems(_ data: ChatMenuItemsData, isService: Bool) -> (afterForward: [ContextMenuItem], beforeDelete: [ContextMenuItem], afterPin: [ContextMenuItem]) {
+func nagramMessageMenuItems(_ data: ChatMenuItemsData, selected: [Message], isService: Bool) -> (afterForward: [ContextMenuItem], beforeDelete: [ContextMenuItem], afterPin: [ContextMenuItem]) {
     let optionHeld = NSApp.currentEvent?.modifierFlags.contains(.option) ?? false
     let message = data.message
     let chatInteraction = data.chatInteraction
@@ -83,19 +83,31 @@ func nagramMessageMenuItems(_ data: ChatMenuItemsData, isService: Bool) -> (afte
 
     let peer = message.peers[message.id.peerId]
     let canSend = peer?.canSendMessage(chatInteraction.mode.isThreadMode, threadData: chatInteraction.presentation.threadInfo, cachedData: chatInteraction.presentation.cachedData) ?? false
-    let canForward = canForwardMessage(message, chatInteraction: chatInteraction)
+    let targets = selected.isEmpty ? [message] : selected.sorted(by: { $0.id < $1.id })
+    let canForward = targets.allSatisfy { canForwardMessage($0, chatInteraction: chatInteraction) }
     let isBroadcast = peer?.isChannel ?? false
+
+    func title(_ key: String) -> String {
+        return selected.isEmpty ? nagramString(key) : "\(nagramString(key)) (\(selected.count))"
+    }
+
+    func clearSelection() {
+        if !selected.isEmpty {
+            chatInteraction.update({ $0.withoutSelectionState() })
+        }
+    }
 
     func repeatMessage(hideNames: Bool) {
         let run = {
-            _ = Sender.forwardMessages(messageIds: [message.id], context: context, peerId: message.id.peerId, replyId: nil, threadId: chatInteraction.chatLocation.threadId, hideNames: hideNames, sendAsPeerId: chatInteraction.presentation.currentSendAsPeerId).start(completed: {
+            clearSelection()
+            _ = Sender.forwardMessages(messageIds: targets.map { $0.id }, context: context, peerId: message.id.peerId, replyId: nil, threadId: chatInteraction.chatLocation.threadId, hideNames: hideNames, sendAsPeerId: chatInteraction.presentation.currentSendAsPeerId).start(completed: {
                 if NagramOptions.scrollAfterRepeat.value {
                     chatInteraction.scrollToLatest(true)
                 }
             })
         }
         if NagramOptions.confirmRepeat.value {
-            verifyAlert(for: context.window, information: nagramString("lng_nagram_menu_repeat_confirm_text"), successHandler: { _ in
+            verifyAlert(for: context.window, information: nagramString(selected.isEmpty ? "lng_nagram_menu_repeat_confirm_text" : "lng_nagram_menu_repeat_selected_confirm_text"), successHandler: { _ in
                 run()
             })
         } else {
@@ -105,21 +117,21 @@ func nagramMessageMenuItems(_ data: ChatMenuItemsData, isService: Bool) -> (afte
 
     if canSend, canForward, !(isBroadcast && NagramOptions.noRepeatInChannels.value) {
         if visible(.repeatMessage) {
-            afterForward.append(ContextMenuItem(nagramString("lng_nagram_menu_repeat"), handler: {
+            afterForward.append(ContextMenuItem(title("lng_nagram_menu_repeat"), handler: {
                 repeatMessage(hideNames: NagramOptions.repeatWithoutQuote.value)
             }, itemImage: MenuAnimation.menu_reload.value))
         }
         if visible(.repeatAsCopy) {
-            afterForward.append(ContextMenuItem(nagramString("lng_nagram_menu_repeat_as_copy"), handler: {
+            afterForward.append(ContextMenuItem(title("lng_nagram_menu_repeat_as_copy"), handler: {
                 repeatMessage(hideNames: true)
             }, itemImage: MenuAnimation.menu_replace.value))
         }
     }
 
     if canForward, visible(.forwardWithoutQuote) {
-        afterForward.append(ContextMenuItem(nagramString("lng_nagram_menu_forward_without_quote"), handler: {
+        afterForward.append(ContextMenuItem(title("lng_nagram_menu_forward_without_quote"), handler: {
             NagramForwardRequest.requestHideNames()
-            chatInteraction.forwardMessages([message])
+            chatInteraction.forwardMessages(targets)
         }, itemImage: MenuAnimation.menu_forward.value))
     }
 

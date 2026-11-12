@@ -1619,7 +1619,7 @@ public func chatMenuItems(for message: Message, entry: ChatHistoryEntry?, textLa
         }
 
         // MARK: NAGRAM
-        let nagramItems = nagramMessageMenuItems(data, isService: isService)
+        let nagramItems = nagramMessageMenuItems(data, selected: selectedMessages, isService: isService)
         secondBlock.append(contentsOf: nagramItems.afterPin)
         secondBlock.append(contentsOf: nagramItems.afterForward)
         let nagramBlock = nagramFilterMenuBlock(nagramItems.beforeDelete)
