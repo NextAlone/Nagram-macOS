@@ -43,6 +43,16 @@ final class NagramExchangeTests: XCTestCase {
         }
     }
 
+    func testSquareCornersAreAccepted() {
+        XCTAssertEqual(NagramOptions.bubbleRoundness.fallback, NagramOptions.roundnessUnchanged)
+        let result = plan([
+            "nagram.bubbleRoundness": 0,
+            "nagram.avatarRoundness": 5,
+            "nagram.searchRoundness": 100,
+        ])
+        XCTAssertEqual(result.changes.count, 3)
+    }
+
     func testDesktopBackupValuesAreAccepted() {
         let result = plan([
             "nagram.messageIdPlace": 2,
@@ -61,7 +71,8 @@ final class NagramExchangeTests: XCTestCase {
 
     func testOutOfRangeValuesAreRejected() {
         assertRejected("nagram.messageIdPlace", 3)
-        assertRejected("nagram.bubbleRoundness", 5)
+        assertRejected("nagram.bubbleRoundness", 101)
+        assertRejected("nagram.bubbleRoundness", -2)
         assertRejected("nagram.textMessageWidth", 401)
         assertRejected("nagram.notificationDelay", 700)
         assertRejected("nagram.stickerScale", 60)

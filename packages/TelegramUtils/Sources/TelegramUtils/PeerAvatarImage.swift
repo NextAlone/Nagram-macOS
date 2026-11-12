@@ -22,10 +22,10 @@ public let graphicsThreadPool = ThreadPool(threadCount: 5, threadPriority: 1)
 // MARK: NAGRAM
 public func nagramAvatarCornerRadius(_ size: NSSize) -> CGFloat? {
     let value = NagramOptions.avatarRoundness.value
-    guard value > 0, value < 100 else {
+    guard value != NagramOptions.roundnessUnchanged else {
         return nil
     }
-    return floor(min(size.width, size.height) / 2 * CGFloat(max(value, 10)) / 100)
+    return floor(min(size.width, size.height) / 2 * CGFloat(min(max(value, 0), 100)) / 100)
 }
 
 public enum PeerPhoto {

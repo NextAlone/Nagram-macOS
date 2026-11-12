@@ -6,7 +6,7 @@ enum NagramOptionRules {
     }
 
     static func roundness(_ value: Int) -> Bool {
-        return value == 0 || (value >= 10 && value <= 100)
+        return value == NagramOptions.roundnessUnchanged || (value >= 0 && value <= 100)
     }
 
     static func textWidth(_ value: Int) -> Bool {

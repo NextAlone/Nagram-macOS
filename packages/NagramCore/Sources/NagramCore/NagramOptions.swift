@@ -1,5 +1,6 @@
 
 public enum NagramOptions {
+    public static let roundnessUnchanged = -1
     public static let unlimitedPinnedChats = NagramOption<Bool>("nagram.unlimitedPinnedChats", .device, false, .chats, "lng_nagram_unlimited_pinned_chats", [.refreshDialogList, .notImplemented])
     public static let localPinnedChats = NagramOption<String>("nagram.localPinnedChats", .account, "", .chats, "lng_nagram_local_pinned_chats", [.hidden], object: true)
     public static let chatListCompact = NagramOption<Bool>("nagram.chatListCompact", .device, false, .chats, "lng_nagram_compact_chat_list", [.refreshDialogList, .notImplemented])
@@ -75,9 +76,9 @@ public enum NagramOptions {
     public static let filtersGlobal = NagramOption<String>("nagram.filtersGlobal", .device, "", .rules, "lng_nagram_filter_global", [.refreshMessageView], object: true)
     public static let filterScopes = NagramOption<String>("nagram.filterScopes", .account, "", .rules, "lng_nagram_filter_scopes", [.refreshMessageView], object: true)
     public static let hiddenMessages = NagramOption<String>("nagram.hiddenMessages", .account, "", .rules, "lng_nagram_hidden_messages", [.refreshMessageView])
-    public static let bubbleRoundness = NagramOption<Int>("nagram.bubbleRoundness", .device, 0, .interface, "lng_nagram_bubble_roundness", [.requiresRestart], validate: NagramOptionRules.roundness)
-    public static let avatarRoundness = NagramOption<Int>("nagram.avatarRoundness", .device, 0, .interface, "lng_nagram_avatar_roundness", [.requiresRestart], validate: NagramOptionRules.roundness)
-    public static let searchRoundness = NagramOption<Int>("nagram.searchRoundness", .device, 0, .interface, "lng_nagram_search_roundness", [.requiresRestart], validate: NagramOptionRules.roundness)
+    public static let bubbleRoundness = NagramOption<Int>("nagram.bubbleRoundness", .device, NagramOptions.roundnessUnchanged, .interface, "lng_nagram_bubble_roundness", [.requiresRestart], validate: NagramOptionRules.roundness)
+    public static let avatarRoundness = NagramOption<Int>("nagram.avatarRoundness", .device, NagramOptions.roundnessUnchanged, .interface, "lng_nagram_avatar_roundness", [.requiresRestart], validate: NagramOptionRules.roundness)
+    public static let searchRoundness = NagramOption<Int>("nagram.searchRoundness", .device, NagramOptions.roundnessUnchanged, .interface, "lng_nagram_search_roundness", [.requiresRestart], validate: NagramOptionRules.roundness)
     public static let uniformAvatarShapes = NagramOption<Bool>("nagram.uniformAvatarShapes", .device, false, .interface, "lng_nagram_uniform_avatar_shapes", [.requiresRestart])
     public static let textMessageWidth = NagramOption<Int>("nagram.textMessageWidth", .device, 0, .interface, "lng_nagram_text_message_width", [.refreshMessageView], validate: NagramOptionRules.textWidth)
     public static let wideChannelPosts = NagramOption<Bool>("nagram.wideChannelPosts", .device, false, .interface, "lng_nagram_wide_channel_posts", [.refreshMessageView])

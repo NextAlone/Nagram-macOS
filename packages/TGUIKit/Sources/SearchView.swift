@@ -359,7 +359,7 @@ open class SearchView: OverlayControl, NSTextViewDelegate {
         self.backgroundColor = .grayBackground
         // MARK: NAGRAM
         let nagramSearchRoundness = NagramOptions.searchRoundness.value
-        self.layer?.cornerRadius = nagramSearchRoundness > 0 ? floor(15 * CGFloat(min(max(nagramSearchRoundness, 10), 100)) / 100) : 15
+        self.layer?.cornerRadius = nagramSearchRoundness == NagramOptions.roundnessUnchanged ? 15 : floor(15 * CGFloat(min(max(nagramSearchRoundness, 0), 100)) / 100)
         progressIndicator.isHidden = true
 //        progressIndicator.numberOfLines = 8
 //        progressIndicator.innerMargin = 3;

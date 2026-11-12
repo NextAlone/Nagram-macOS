@@ -5,10 +5,11 @@ func nagramInterfaceRows() -> [NagramRow] {
     let o = NagramOptions.self
     var rows: [NagramRow] = []
     rows.append(.header(nagramString("lng_nagram_roundness_and_shapes")))
-    rows.append(.choice(o.bubbleRoundness, choices: nagramPercentChoices([10, 25, 50, 75, 100])))
-    rows.append(.choice(o.avatarRoundness, choices: nagramPercentChoices([10, 25, 50, 75, 100])))
-    rows.append(.toggle(o.uniformAvatarShapes, visible: { o.avatarRoundness.value != 0 }))
-    rows.append(.choice(o.searchRoundness, choices: nagramPercentChoices([10, 25, 50, 75, 100])))
+    let roundness = [NagramChoice(NagramOptions.roundnessUnchanged, nagramFollowTelegram())] + nagramPercentChoices([0, 10, 25, 50, 75, 100], followDefault: false)
+    rows.append(.choice(o.bubbleRoundness, choices: roundness))
+    rows.append(.choice(o.avatarRoundness, choices: roundness))
+    rows.append(.toggle(o.uniformAvatarShapes, visible: { o.avatarRoundness.value != NagramOptions.roundnessUnchanged }))
+    rows.append(.choice(o.searchRoundness, choices: roundness))
 
     rows.append(.header(nagramString("lng_nagram_message_style")))
     rows.append(.choice(o.textMessageWidth, choices: nagramPercentChoices([50, 75, 125, 150, 200, 300, 400])))

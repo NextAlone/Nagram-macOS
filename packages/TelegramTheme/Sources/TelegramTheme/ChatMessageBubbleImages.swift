@@ -14,7 +14,7 @@ public enum MessageBubbleImageNeighbors: Hashable {
 // MARK: NAGRAM
 private let nagramBubbleScale: CGFloat = {
     let value = NagramOptions.bubbleRoundness.value
-    return value > 0 ? CGFloat(min(max(value, 10), 100)) / 100.0 : 1.0
+    return value == NagramOptions.roundnessUnchanged ? 1.0 : CGFloat(min(max(value, 0), 100)) / 100.0
 }()
 let messageBubbleMainRadius: CGFloat = max(2.0, floor(16.0 * nagramBubbleScale))
 let messageBubbleAuxiliaryRadius: CGFloat = max(2.0, floor(8.0 * nagramBubbleScale))
