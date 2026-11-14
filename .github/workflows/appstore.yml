@@ -7,10 +7,16 @@ on:
         description: Upload the build to App Store Connect (TestFlight)
         type: boolean
         default: true
+      notes:
+        description: Release notes posted with the TestFlight build, docs/nagram/releases/<app version>.md when empty
+        type: string
+        default: ""
+  push:
+    branches: [ "main" ]
 
 concurrency:
-  group: appstore
-  cancel-in-progress: false
+  group: appstore-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'push' }}
 
 permissions:
   contents: read
@@ -19,7 +25,14 @@ jobs:
   build:
     runs-on: xcode-27
     timeout-minutes: 360
+    outputs:
+      version: ${{ steps.package.outputs.version }}
+      build: ${{ steps.package.outputs.build }}
+      min_os: ${{ steps.package.outputs.min_os }}
+      notes: ${{ steps.notes.outputs.notes }}
     env:
+      APP_STORE: ${{ github.event_name == 'workflow_dispatch' }}
+      UPLOAD: ${{ github.event_name == 'workflow_dispatch' && inputs.upload }}
       LANG: en_US.UTF-8
       LC_ALL: en_US.UTF-8
       XCODE_VERSION: "27.2"
@@ -35,6 +48,29 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
+
+      - name: Check the release notes
+        id: notes
+        env:
+          NOTES_INPUT: ${{ inputs.notes }}
+          BOT_TOKEN: ${{ secrets.NAGRAM_CHANNEL_BOT_TOKEN }}
+        run: |
+          set -euo pipefail
+          VERSION="$(sed -n 's/^[[:space:]]*MARKETING_VERSION = \(.*\);$/\1/p' Telegram.xcodeproj/project.pbxproj | sort -u)"
+          if ! [[ "$VERSION" =~ ^[0-9]+(\.[0-9]+)*$ ]]; then
+            echo "::error::Telegram.xcodeproj has no single MARKETING_VERSION: '$VERSION'."
+            exit 1
+          fi
+          echo "APP_VERSION=$VERSION" >> "$GITHUB_ENV"
+          if [ "$UPLOAD" != "true" ] || [ -z "$BOT_TOKEN" ]; then
+            exit 0
+          fi
+          NOTES="${NOTES_INPUT:-docs/nagram/releases/$VERSION.md}"
+          if [ ! -f "$NOTES" ]; then
+            echo "::error::$NOTES is missing, write the notes of this build before uploading it."
+            exit 1
+          fi
+          echo "notes=$NOTES" >> "$GITHUB_OUTPUT"
 
       - name: Select Xcode
         id: xcode
@@ -103,6 +139,7 @@ jobs:
 
 
       - name: Set up App Store Connect API key
+        if: env.APP_STORE == 'true'
         env:
           ASC_KEY_P8_BASE64: ${{ secrets.ASC_KEY_P8_BASE64 }}
         run: |
@@ -117,6 +154,10 @@ jobs:
         run: |
           set -euo pipefail
           PLIST_BUILD="$(plutil -extract CFBundleVersion raw Telegram-Mac/Info.plist)"
+          if [ "$APP_STORE" != "true" ]; then
+            echo "BUILD_NUMBER=$PLIST_BUILD" >> "$GITHUB_ENV"
+            exit 0
+          fi
           LATEST="$(python3 scripts/nagram/asc_latest_build.py)"
           BUILD_NUMBER=$(( LATEST + 1 > PLIST_BUILD ? LATEST + 1 : PLIST_BUILD ))
           echo "Info.plist: $PLIST_BUILD, App Store Connect: $LATEST, using $BUILD_NUMBER"
@@ -133,8 +174,8 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "$NAGRAM_API_ID" ] || [ -z "$NAGRAM_API_HASH" ]; then
-            if [ "${{ inputs.upload }}" = "true" ]; then
-              echo "::error::Set the NAGRAM_API_ID and NAGRAM_API_HASH secrets before uploading."
+            if [ "$UPLOAD" = "true" ] || [ "$GITHUB_EVENT_NAME" = "push" ]; then
+              echo "::error::Set the NAGRAM_API_ID and NAGRAM_API_HASH secrets before uploading or posting a build."
               exit 1
             fi
             echo "::warning::NAGRAM_API_ID or NAGRAM_API_HASH is missing; this build cannot log in and must not be distributed."
@@ -146,6 +187,10 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p build
+          FLAVOR=()
+          if [ "$APP_STORE" = "true" ]; then
+            FLAVOR=(SOURCE=APP_STORE 'OTHER_SWIFT_FLAGS=$(inherited) -DAPP_STORE' 'SWIFT_ACTIVE_COMPILATION_CONDITIONS=$(inherited) APP_STORE')
+          fi
           set +e
           xcodebuild archive \
             -workspace Telegram-Mac.xcworkspace \
@@ -154,9 +199,7 @@ jobs:
             -derivedDataPath build/DerivedData \
             -archivePath "$ARCHIVE" \
             COMPILER_INDEX_STORE_ENABLE=NO \
-            SOURCE=APP_STORE \
-            'OTHER_SWIFT_FLAGS=$(inherited) -DAPP_STORE' \
-            'SWIFT_ACTIVE_COMPILATION_CONDITIONS=$(inherited) APP_STORE' \
+            ${FLAVOR[@]+"${FLAVOR[@]}"} \
             CODE_SIGNING_ALLOWED=NO > build/archive.log 2>&1
           STATUS=$?
           set -e
@@ -169,7 +212,34 @@ jobs:
           tail -3 build/archive.log
           df -h "$GITHUB_WORKSPACE"
 
+      - name: Package for the channel
+        id: package
+        if: github.event_name == 'push' || env.UPLOAD == 'true'
+        run: |
+          set -euo pipefail
+          NAME="Nagram-$APP_VERSION-$BUILD_NUMBER"
+          if [ "$GITHUB_EVENT_NAME" = "push" ]; then
+            NAME="$NAME-${GITHUB_SHA::7}"
+          fi
+          MIN_OS="$(scripts/nagram/ci-package.sh "$ARCHIVE/Products/Applications/Telegram.app" "$RUNNER_TEMP/channel" "$NAME")"
+          ls -l "$RUNNER_TEMP/channel"
+          {
+            echo "version=$APP_VERSION"
+            echo "build=$BUILD_NUMBER"
+            echo "min_os=$MIN_OS"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Save the channel files
+        if: steps.package.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Nagram-macos-${{ env.BUILD_NUMBER }}
+          path: ${{ runner.temp }}/channel/*
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Sign the archive with its entitlements
+        if: env.APP_STORE == 'true'
         run: |
           set -euo pipefail
           APP="$ARCHIVE/Products/Applications/Telegram.app"
@@ -179,9 +249,10 @@ jobs:
           plutil -p "$APP/Contents/Info.plist" | grep -E '"CFBundle(ShortVersionString|Version)"'
 
       - name: Export and upload
+        if: env.APP_STORE == 'true'
         run: |
           set -euo pipefail
-          if [ "${{ inputs.upload }}" = "true" ]; then DESTINATION="upload"; else DESTINATION="export"; fi
+          if [ "$UPLOAD" = "true" ]; then DESTINATION="upload"; else DESTINATION="export"; fi
           cat > build/ExportOptions.plist <<PLIST
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -212,7 +283,7 @@ jobs:
             -authenticationKeyIssuerID "$ASC_ISSUER_ID"
 
       - name: Upload the package
-        if: ${{ !inputs.upload }}
+        if: env.APP_STORE == 'true' && env.UPLOAD != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: Nagram-${{ env.BUILD_NUMBER }}-appstore
@@ -227,3 +298,160 @@ jobs:
             build/archive.log
             /var/folders/**/*.xcdistributionlogs
           if-no-files-found: ignore
+
+  channel:
+    name: Channel
+    needs: build
+    if: github.event_name == 'workflow_dispatch' && inputs.upload
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    env:
+      BOT_TOKEN: ${{ secrets.NAGRAM_CHANNEL_BOT_TOKEN }}
+      ASSETS_CHAT_ID: ${{ vars.NAGRAM_CHANNEL_ASSETS_CHAT_ID }}
+      OFFICIAL_CHAT_ID: ${{ vars.NAGRAM_CHANNEL_CHAT_ID }}
+      TESTFLIGHT_URL: ${{ vars.NAGRAM_TESTFLIGHT_URL }}
+      VERSION: ${{ needs.build.outputs.version }}
+      BUILD: ${{ needs.build.outputs.build }}
+      NOTES: ${{ needs.build.outputs.notes }}
+
+    steps:
+      - name: Check the configuration
+        id: configuration
+        run: |
+          set -euo pipefail
+          if [ -z "$BOT_TOKEN" ] || [ -z "$ASSETS_CHAT_ID$OFFICIAL_CHAT_ID" ]; then
+            echo "::notice::NAGRAM_CHANNEL_BOT_TOKEN or both channels are not set, nothing is posted."
+            exit 0
+          fi
+          CHAT_ID="${ASSETS_CHAT_ID:-$OFFICIAL_CHAT_ID}"
+          COPY_TO=""
+          if [ -n "$ASSETS_CHAT_ID" ] && [ -n "$OFFICIAL_CHAT_ID" ] && [ "$OFFICIAL_CHAT_ID" != "$ASSETS_CHAT_ID" ]; then
+            COPY_TO="$OFFICIAL_CHAT_ID"
+          fi
+          {
+            echo "chat=$CHAT_ID"
+            echo "copy=$COPY_TO"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Clone
+        if: steps.configuration.outputs.chat != ''
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          sparse-checkout: docs/nagram/releases
+
+      - name: Download the channel files
+        if: steps.configuration.outputs.chat != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: Nagram-macos-${{ env.BUILD }}
+          path: ${{ runner.temp }}/channel
+
+      - name: Describe the post
+        id: post
+        if: steps.configuration.outputs.chat != ''
+        run: |
+          set -euo pipefail
+          ls -l "$RUNNER_TEMP/channel"
+          test -f "$NOTES"
+          NOTES_EN="${NOTES%.md}.en.md"
+          if [ ! -f "$NOTES_EN" ]; then
+            NOTES_EN=""
+          fi
+          {
+            echo "notes_en=$NOTES_EN"
+            echo "buttons<<BUTTONS"
+            RELEASES="GitHub Releases=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases"
+            if [ -n "$TESTFLIGHT_URL" ]; then
+              echo "*TestFlight=$TESTFLIGHT_URL | $RELEASES"
+            else
+              echo "*$RELEASES"
+            fi
+            echo "问题反馈=https://t.me/OrIssuesBot"
+            echo "BUTTONS"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Post to the channels
+        if: steps.configuration.outputs.chat != ''
+        uses: NextAlone/NagramActionRelated/channel-publish@5de594cfb14d39bd21f4bb513ac6fe355aec1b46
+        with:
+          bot-token: ${{ secrets.NAGRAM_CHANNEL_BOT_TOKEN }}
+          api-id: ${{ secrets.NAGRAM_API_ID }}
+          api-hash: ${{ secrets.NAGRAM_API_HASH }}
+          chat-id: ${{ steps.configuration.outputs.chat }}
+          copy-to: ${{ steps.configuration.outputs.copy }}
+          directory: ${{ runner.temp }}/channel
+          title: Nagram macOS
+          version: ${{ env.VERSION }}
+          build: ${{ env.BUILD }}
+          hashtags: macos testflight
+          notes-file: ${{ env.NOTES }}
+          notes-en-file: ${{ steps.post.outputs.notes_en }}
+          fold-sections: |
+            安装
+            已知限制
+          files-title: 下载
+          files: |
+            *.dmg | 磁盘映像 · ad-hoc 签名 · macOS ${{ needs.build.outputs.min_os }} 及以上
+            *.zip | zip 压缩包
+          buttons: ${{ steps.post.outputs.buttons }}
+
+  channel-test:
+    name: Channel (test build)
+    needs: build
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    env:
+      BOT_TOKEN: ${{ secrets.NAGRAM_CHANNEL_BOT_TOKEN }}
+      CHAT_ID: ${{ vars.NAGRAM_CHANNEL_ASSETS_CHAT_ID }}
+      VERSION: ${{ needs.build.outputs.version }}
+      BUILD: ${{ needs.build.outputs.build }}
+
+    steps:
+      - name: Check the configuration
+        id: configuration
+        run: |
+          if [ -z "$BOT_TOKEN" ] || [ -z "$CHAT_ID" ]; then
+            echo "::notice::NAGRAM_CHANNEL_BOT_TOKEN or NAGRAM_CHANNEL_ASSETS_CHAT_ID is not set, nothing is posted to the channel."
+            exit 0
+          fi
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+
+      - name: Download the channel files
+        if: steps.configuration.outputs.ready == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: Nagram-macos-${{ env.BUILD }}
+          path: ${{ runner.temp }}/channel
+
+      - name: Describe the post
+        if: steps.configuration.outputs.ready == 'true'
+        env:
+          COMMITS: ${{ toJSON(github.event.commits) }}
+        run: |
+          set -euo pipefail
+          ls -l "$RUNNER_TEMP/channel"
+          printf '%s\n' "$COMMITS" > "$RUNNER_TEMP/channel-commits.json"
+
+      - name: Post to the channel
+        if: steps.configuration.outputs.ready == 'true'
+        uses: NextAlone/NagramActionRelated/channel-publish@5de594cfb14d39bd21f4bb513ac6fe355aec1b46
+        with:
+          bot-token: ${{ secrets.NAGRAM_CHANNEL_BOT_TOKEN }}
+          api-id: ${{ secrets.NAGRAM_API_ID }}
+          api-hash: ${{ secrets.NAGRAM_API_HASH }}
+          chat-id: ${{ env.CHAT_ID }}
+          directory: ${{ runner.temp }}/channel
+          kind: test
+          title: Nagram macOS
+          version: ${{ env.VERSION }}
+          build: ${{ env.BUILD }}
+          hashtags: macos test
+          commits-file: ${{ runner.temp }}/channel-commits.json
+          files: |
+            *.dmg | 磁盘映像 · ad-hoc 签名 · macOS ${{ needs.build.outputs.min_os }} 及以上
+            *.zip | zip 压缩包
+          buttons: Commit=${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}
