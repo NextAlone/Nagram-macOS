@@ -412,7 +412,8 @@ public class ChatFileContentView: ChatMediaContentView {
     public override func layout() {
         super.layout()
         let center = floorToScreenPixels(backingScaleFactor, frame.height / 2)
-        actionText.setFrameOrigin(leftInset, isHasThumb ? center + 2 : 20)
+        let fileParameters = parameters as? ChatFileLayoutParameters
+        actionText.setFrameOrigin(leftInset, isHasThumb ? center + 2 : (fileParameters?.statusTextTop ?? 20))
         if isHasThumb {
             if let thumbProgress = thumbProgress {
                 let f = thumbView.focus(thumbProgress.frame.size)

@@ -35,15 +35,9 @@ public class ChatFileMediaItem: ChatMediaItem {
     }
     
     public override func makeContentSize(_ width: CGFloat) -> NSSize {
-        
-        var width = width
-        
         let parameters = self.parameters as! ChatFileLayoutParameters
-        let optionalWidth = parameters.makeLabelsForWidth(width)
-                
-        width = min(width, optionalWidth)
-        
-        return NSMakeSize(width, parameters.hasThumb ? 70 : 40)
+        let measuredWidth = parameters.makeLabelsForWidth(width, maximumFileNameLines: 2)
+        return NSMakeSize(min(width, measuredWidth), parameters.contentHeight)
     }
     
 

@@ -395,22 +395,28 @@ public class ChatGroupedItem: ChatRowItem {
     
     public override func makeContentSize(_ width: CGFloat) -> NSSize {
         var _width: CGFloat = 0
+        var fileHeights: [MessageId: CGFloat] = [:]
         switch layout.type {
         case .files:
-            let maxCaptionWidth = min(width, 360) - (hasBubble ? bubbleDefaultInnerInset : 0)
+            let maxWidth = min(width, 360)
+            let maxCaptionWidth = maxWidth - (hasBubble ? bubbleDefaultInnerInset : 0)
             for layout in captionLayouts {
                 layout.layout.measure(width: maxCaptionWidth)
                 _width = max(_width, layout.layout.size.width + (hasBubble ? bubbleDefaultInnerInset : 0))
             }
-            for parameter in parameters {
-                let value = parameter.makeLabelsForWidth(min(width, 360))
-                _width = max(_width, value)
+            for (message, parameter) in zip(layout.messages, parameters) {
+                if let fileParameters = parameter as? ChatFileLayoutParameters {
+                    _width = max(_width, fileParameters.makeLabelsForWidth(maxWidth, maximumFileNameLines: 2))
+                    fileHeights[message.id] = fileParameters.contentHeight
+                } else {
+                    _width = max(_width, parameter.makeLabelsForWidth(maxWidth))
+                }
             }
         case .photoOrVideo:
             _width = min(width, 360)
         }
        
-        layout.measure(NSMakeSize(_width, min(_width, 320)), spacing: hasBubble ? 2 : 4)
+        layout.measure(NSMakeSize(_width, min(_width, 320)), spacing: hasBubble ? 2 : 4, fileHeights: fileHeights)
         
         
         var maxContentWidth = layout.dimensions.width

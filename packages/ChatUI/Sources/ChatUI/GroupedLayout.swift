@@ -69,7 +69,7 @@ public class GroupedLayout {
         return nil
     }
     
-    public func measure(_ maxSize: NSSize, spacing: CGFloat = 4.0, preview: Bool = false) {
+    public func measure(_ maxSize: NSSize, spacing: CGFloat = 4.0, preview: Bool = false, fileHeights: [MessageId: CGFloat] = [:]) {
         
         var photos: [MessagePhotoInfo] = []
         
@@ -399,15 +399,13 @@ public class GroupedLayout {
             var y: CGFloat = 0
             for (i, message) in messages.enumerated() {
                 let info = MessagePhotoInfo(message, preview: preview)
-                var height:CGFloat = 40
-                if let file = message.anyMedia as? TelegramMediaFile {
-                    if file.isMusicFile {
-                        height = 40
-                    } else if file.previewRepresentations.isEmpty {
-                        height = 40
-                    } else {
-                        height = 70
-                    }
+                let height: CGFloat
+                if let fileHeight = fileHeights[message.id] {
+                    height = fileHeight
+                } else if let file = message.anyMedia as? TelegramMediaFile, !file.isMusicFile, !file.previewRepresentations.isEmpty {
+                    height = 70
+                } else {
+                    height = 40
                 }
                 
                 info.layoutFrame = NSMakeRect(0, y, maxSize.width, height)

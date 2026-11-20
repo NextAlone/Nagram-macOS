@@ -60,17 +60,41 @@ public class ChatFileLayoutParameters : ChatMediaGalleryParameters {
         super.init(isWebpage: false, presentation: presentation, media: media, automaticDownload: automaticDownload, autoplayMedia: autoplayMedia, isRevealed: nil)
         
     }
+
+    var statusTextTop: CGFloat {
+        guard let layout = name?.0, layout.numberOfLines > 1 else {
+            return 20
+        }
+        return max(20, layout.size.height + 5)
+    }
+
+    var contentHeight: CGFloat {
+        if hasThumb {
+            let titleHeight = name?.0.size.height ?? 0
+            return max(70, (titleHeight + 3) * 2)
+        }
+        return statusTextTop + 20
+    }
+
     public override func makeLabelsForWidth(_ width: CGFloat) -> CGFloat {
-        self.name = TextNode.layoutText(maybeNode: nameNode, .initialize(string: fileName , color: presentation.text, font: .medium(.text)), nil, 1, .middle, NSMakeSize(width - (hasThumb ? 80 : 50), 20), nil,false, .left)
-        
+        return makeLabelsForWidth(width, maximumFileNameLines: 1)
+    }
 
-        uploadingLayout.measure(width: width - (hasThumb ? 80 : 50))
-        downloadingLayout.measure(width: width - (hasThumb ? 80 : 50))
-        
-        downloadLayout.measure(width: width - (hasThumb ? 80 : 50))
-        finderLayout.measure(width: width - (hasThumb ? 80 : 50))
-        
-        return max(downloadLayout.layoutSize.width, uploadingLayout.layoutSize.width, finderLayout.layoutSize.width, downloadingLayout.layoutSize.width, self.name!.0.size.width) + (hasThumb ? 80 : 50)
+    func makeLabelsForWidth(_ width: CGFloat, maximumFileNameLines: Int) -> CGFloat {
+        let inset: CGFloat = hasThumb ? 80 : 50
+        let textWidth = max(1, width - inset)
+        let title = TextNode.layoutText(
+            maybeNode: nameNode,
+            .initialize(string: fileName, color: presentation.text, font: .medium(.text)),
+            nil, maximumFileNameLines, .middle, NSMakeSize(textWidth, .greatestFiniteMagnitude), nil, false, .left
+        )
+        self.name = title
 
+        uploadingLayout.measure(width: textWidth)
+        downloadingLayout.measure(width: textWidth)
+        downloadLayout.measure(width: textWidth)
+        finderLayout.measure(width: textWidth)
+
+        return max(downloadLayout.layoutSize.width, uploadingLayout.layoutSize.width, finderLayout.layoutSize.width, downloadingLayout.layoutSize.width, title.0.size.width) + inset
     }
 }
