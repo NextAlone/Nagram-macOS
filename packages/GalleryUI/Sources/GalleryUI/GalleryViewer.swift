@@ -29,6 +29,7 @@ import SecureIdUtils
 import FoundationUtils
 import ObjcUtils
 import InputDataUI
+import AppAnalytics
 
 public final class GalleryInteractions {
     public var dismiss:(NSEvent)->KeyHandlerResult = { _ in return .rejected}
@@ -253,6 +254,7 @@ public class GalleryViewer: NSResponder {
     private let operationDisposable = MetaDisposable()
     public private(set) weak var delegate:InteractionContentViewProtocol?
     private let context:any AccountContextProtocol
+    private let analyticsOrigin: GalleryAnalyticsContext
     public var accountId: AccountRecordId {
         return context.account.id
     }
@@ -274,7 +276,19 @@ public class GalleryViewer: NSResponder {
     
     private var liveTranslate: ChatLiveTranslateContext?
     
-    private init(context: any AccountContextProtocol, _ delegate:InteractionContentViewProtocol? = nil, _ contentInteractions:(any GalleryContentInteractions)? = nil, type: GalleryAppearType, reversed:Bool = false, chatMode: ChatMode?, chatLocation: ChatLocation?, cachedPeerData: CachedPeerData? = nil) {
+    private init(context: any AccountContextProtocol, _ delegate:InteractionContentViewProtocol? = nil, _ contentInteractions:(any GalleryContentInteractions)? = nil, type: GalleryAppearType, reversed:Bool = false, chatMode: ChatMode?, chatLocation: ChatLocation?, cachedPeerData: CachedPeerData? = nil, analyticsContext: AnalyticsContext? = nil, analyticsMessages: [Message] = []) {
+        let analyticsOrigin = GalleryAnalyticsContext(accountContext: context, inherited: analyticsContext, peerId: chatLocation?.peerId)
+        analyticsOrigin.restrict(messages: analyticsMessages)
+        switch type {
+        case let .profile(peerId): analyticsOrigin.restrict(peerId: peerId)
+        case let .messages(messages): analyticsOrigin.restrict(messages: messages)
+        case .secret: analyticsOrigin.exclude()
+        default: break
+        }
+        self.analyticsOrigin = analyticsOrigin
+        let analyticsPresentation = analyticsOrigin.context.beginPresentation()
+        defer { analyticsPresentation.end() }
+
         self.context = context
         self.delegate = delegate
         self.type = type
@@ -660,9 +674,9 @@ public class GalleryViewer: NSResponder {
     }
 
 
-    fileprivate convenience init(context: any AccountContextProtocol, message:Message, _ delegate:InteractionContentViewProtocol? = nil, _ contentInteractions:(any GalleryContentInteractions)? = nil, type: GalleryAppearType = .history, item: MGalleryItem? = nil, reversed: Bool = false, chatMode: ChatMode?, chatLocation: ChatLocation?, contextHolder: Atomic<ChatLocationContextHolder?> = Atomic(value: nil), cachedPeerData: CachedPeerData? = nil) {
+    fileprivate convenience init(context: any AccountContextProtocol, message:Message, _ delegate:InteractionContentViewProtocol? = nil, _ contentInteractions:(any GalleryContentInteractions)? = nil, type: GalleryAppearType = .history, item: MGalleryItem? = nil, reversed: Bool = false, chatMode: ChatMode?, chatLocation: ChatLocation?, contextHolder: Atomic<ChatLocationContextHolder?> = Atomic(value: nil), cachedPeerData: CachedPeerData? = nil, analyticsContext: AnalyticsContext? = nil) {
         
-        self.init(context: context, delegate, contentInteractions, type: type, reversed: reversed, chatMode: chatMode, chatLocation: chatLocation, cachedPeerData: cachedPeerData)
+        self.init(context: context, delegate, contentInteractions, type: type, reversed: reversed, chatMode: chatMode, chatLocation: chatLocation, cachedPeerData: cachedPeerData, analyticsContext: analyticsContext, analyticsMessages: [message])
 
         let chatMode = self.chatMode
         let chatLocation = self.chatLocation
@@ -670,6 +684,7 @@ public class GalleryViewer: NSResponder {
         let current:Atomic<[ChatHistoryEntry]> = Atomic(value:[])
         let currentIndex:Atomic<Int?> = Atomic(value:nil)
         let selectedMessageIndex:Atomic<MessageIndex?> = Atomic(value:nil)
+        let selectedStableId:Atomic<UInt32?> = Atomic(value:nil)
         let restoringSelection:Atomic<Bool> = Atomic(value:false)
         let pendingLoad:Atomic<(anchor: MessageIndex, older: Bool)?> = Atomic(value:nil)
         let loadedRange:Atomic<(lower: MessageIndex, upper: MessageIndex)?> = Atomic(value:nil)
@@ -721,7 +736,11 @@ public class GalleryViewer: NSResponder {
                 let signal:Signal<(MessageHistoryView, ViewUpdateType, InitialMessageHistoryData?), NoError>
                 switch mode {
                 case .history, .preview:
-                    signal = context.account.viewTracker.aroundIdMessageHistoryViewForLocation(.peer(peerId: message.id.peerId, threadId: nil), count: 50, ignoreRelatedChats: false, messageId: index.id, tag: tags, orderStatistics: [.combinedLocation], additionalData: [])
+                    if chatLocation.threadId != nil, chatLocation.peerId == message.id.peerId {
+                        signal = context.account.viewTracker.aroundIdMessageHistoryViewForLocation(context.chatLocationInput(for: chatLocation, contextHolder: contextHolder), count: 50, ignoreRelatedChats: false, messageId: index.id, tag: tags, orderStatistics: [.combinedLocation], additionalData: [])
+                    } else {
+                        signal = context.account.viewTracker.aroundIdMessageHistoryViewForLocation(.peer(peerId: message.id.peerId, threadId: nil), count: 50, ignoreRelatedChats: false, messageId: index.id, tag: tags, orderStatistics: [.combinedLocation], additionalData: [])
+                    }
                 case .thread:
                     if case let .thread(data) = chatLocation {
                         if case let .thread(data) = chatLocation, data.effectiveTopId == message.id {
@@ -927,19 +946,26 @@ public class GalleryViewer: NSResponder {
                     }
                     
                     var current:Int? = currentIndex.modify({$0})
-                    if current == nil || !reversed {
-                        let id = selectedMessage?.id ?? message.id
-                        if let found = new.firstIndex(where: { $0.message?.id == id }) {
-                            current = found
-                        } else if !reversed, let selectedMessage = selectedMessage, !new.isEmpty {
-                            current = new.firstIndex(where: { $0.index >= selectedMessage }) ?? new.count - 1
-                        }
+                    let selectedStable = selectedStableId.with { $0 }
+                    var keep = true
+                    if let found = new.firstIndex(where: { $0.message?.stableId == (selectedStable ?? message.stableId) }) {
+                        current = found
+                    } else if !new.isEmpty {
+                        keep = selectedStable != nil
+                        let selected = selectedMessage ?? MessageIndex(message)
+                        current = new.firstIndex(where: { reversed ? $0.index <= selected : $0.index >= selected }) ?? new.count - 1
+                    }
+                    if keep, let current = current, current < new.count {
+                        _ = selectedMessageIndex.swap(new[current].message.flatMap { MessageIndex($0) })
+                        _ = selectedStableId.swap(new[current].message?.stableId)
                     }
                     
 //
                     
                     
+                    _ = restoringSelection.swap(true)
                     let isEmpty = strongSelf.pager.merge(with: transition)
+                    _ = restoringSelection.swap(false)
                     
                     if !isEmpty {
                         
@@ -971,9 +997,11 @@ public class GalleryViewer: NSResponder {
             guard let `self` = self, entries.count > 0 else {return}
             
             let current = entries[selectedIndex]
+            self.analyticsOrigin.restrict(messages: current.message.map { [$0] } ?? [])
             let isRestoring = restoringSelection.with { $0 }
             if !isRestoring {
                 _ = selectedMessageIndex.swap(current.message.flatMap { MessageIndex($0) })
+                _ = selectedStableId.swap(current.message?.stableId)
             }
             self.updateCaptureExclusion()
             if let location = current.location {
@@ -1156,9 +1184,11 @@ public class GalleryViewer: NSResponder {
                     }, itemImage: MenuAnimation.menu_show_message.value))
                 }
                 if chatMode == .history && message.id.peerId != repliesPeerId && self.type == .history {
-                    items.append(ContextMenuItem(strings().galleryContextShowGallery, handler: { [weak self] in
-                        self?.showSharedMedia()
-                    }, itemImage: MenuAnimation.menu_shared_media.value))
+                    if chatLocation.threadId == nil {
+                        items.append(ContextMenuItem(strings().galleryContextShowGallery, handler: { [weak self] in
+                            self?.showSharedMedia()
+                        }, itemImage: MenuAnimation.menu_shared_media.value))
+                    }
                     
                     if GalleryHooks.shared.canSendHere(context, message) {
                         if let _ = message.anyMedia as? TelegramMediaImage {
@@ -1298,15 +1328,19 @@ public class GalleryViewer: NSResponder {
             actionDisposables.add(adminsDisposable)
             messagesActionDisposable.set(actionDisposables)
             
-            actionDisposables.add((adminsPromise.get() |> deliverOnMainQueue).start( next:{ [weak self] admins in
+            actionDisposables.add((adminsPromise.get() |> take(1) |> deliverOnMainQueue).start( next:{ [weak self] admins in
                 guard let `self` = self else {return}
                 
                 var canDelete:Bool = true
                 var canDeleteForEveryone = true
                 var otherCounter:Int32 = 0
+                var _mustDeleteForEveryoneMessage: Bool = true
                 for message in messages {
                     if !canDeleteMessage(message, account: self.context.account, chatLocation: chatLocation, mode: chatMode) {
                         canDelete = false
+                    }
+                    if !mustDeleteForEveryoneMessage(message) {
+                        _mustDeleteForEveryoneMessage = false
                     }
                     if !canDeleteForEveryoneMessage(message, context: self.context) {
                         canDeleteForEveryone = false
@@ -1348,7 +1382,10 @@ public class GalleryViewer: NSResponder {
                             _ = self.context.engine.messages.deleteMessagesInteractively(messageIds: messageIds, type: type).start()
                         })
                     } else {
-                        _ = self.context.engine.messages.deleteMessagesInteractively(messageIds: messageIds, type: .forLocalPeer).start()
+                        verifyAlert(for: self.window, header: strings().chatConfirmActionUndonable, information: _mustDeleteForEveryoneMessage ? strings().chatConfirmDeleteForEveryoneOther(messages.count) : strings().chatConfirmDeleteMessages1Other(messages.count), ok: strings().confirmDelete, successHandler: { [weak self] _ in
+                            guard let `self` = self else {return}
+                            _ = self.context.engine.messages.deleteMessagesInteractively(messageIds: messageIds, type: .forLocalPeer).start()
+                        })
                     }
                 }
             }))
@@ -1577,6 +1614,8 @@ public class GalleryViewer: NSResponder {
         let generation = presentationGeneration
         let messages = pager.thumbsControl.items.compactMap { $0.entry.message }
         if let message = self.pager.selectedItem?.entry.message {
+            analyticsOrigin.restrict(messages: [message])
+            let origin = analyticsOrigin.context
             if message.groupInfo != nil, !messages.isEmpty {
                 var items:[ContextMenuItem] = []
                 
@@ -1594,7 +1633,7 @@ public class GalleryViewer: NSResponder {
                 
                 items.append(ContextMenuItem(thisTitle, handler: { [weak self] in
                     guard let self, viewer === self, self.presentationGeneration == generation else { return }
-                    GalleryHooks.shared.showShareObserved(self.context, message, nil, self.window)
+                    GalleryHooks.shared.showShareObserved(self.context, message, nil, self.window, analyticsContext: origin)
                 }, itemImage: MenuAnimation.menu_share.value))
                 
                 let allTitle: String
@@ -1610,7 +1649,8 @@ public class GalleryViewer: NSResponder {
                 
                 items.append(ContextMenuItem(allTitle, handler: { [weak self] in
                     guard let self, viewer === self, self.presentationGeneration == generation else { return }
-                    GalleryHooks.shared.showShareObserved(self.context, message, messages, self.window)
+                    self.analyticsOrigin.restrict(messages: messages)
+                    GalleryHooks.shared.showShareObserved(self.context, message, messages, self.window, analyticsContext: origin)
                 }, itemImage: MenuAnimation.menu_share.value))
                 
                 let menu = ContextMenu(presentation: .current(darkPalette), betterInside: true)
@@ -1621,7 +1661,7 @@ public class GalleryViewer: NSResponder {
                     AppMenu.show(menu: menu, event: event, for: control)
                 }
             } else {
-                GalleryHooks.shared.showShareObserved(self.context, message, nil, self.window)
+                GalleryHooks.shared.showShareObserved(self.context, message, nil, self.window, analyticsContext: origin)
             }
         }
     }
@@ -1661,11 +1701,14 @@ public class GalleryViewer: NSResponder {
     fileprivate func show(_ animated: Bool = true, _ ignoreStableId:AnyHashable? = nil) -> Void {
         presentationGeneration += 1
         viewer = self
+        analyticsOrigin.restrict(messages: pager.selectedItem?.entry.message.map { [$0] } ?? [])
+        analyticsOrigin.begin()
         NotificationCenter.default.removeObserver(self)
         NotificationCenter.default.addObserver(self, selector: #selector(windowDidBecomeKey), name: NSWindow.didBecomeKeyNotification, object: window)
         NotificationCenter.default.addObserver(self, selector: #selector(windowDidResignKey), name: NSWindow.didResignKeyNotification, object: window)
         context.window.resignFirstResponder()
         self.window.makeKeyAndOrderFront(nil)
+        Analytics.shared.screens.showStandalone(.mediaViewer, owner: self, context: analyticsOrigin.context)
         //window.makeFirstResponder(self)
         //closePipVideo()
        // backgroundView.alphaValue = 0
@@ -1720,6 +1763,7 @@ public class GalleryViewer: NSResponder {
     }
     
     public func close(_ animated:Bool = false) -> Void {
+        Analytics.shared.screens.hideStandalone(owner: self)
         disposable.dispose()
         readyDispose.set(nil)
         didSetReady = false
@@ -1746,6 +1790,7 @@ public class GalleryViewer: NSResponder {
                 }
                 self.removeCaptureExclusion()
                 self.window.orderOut(nil)
+                self.analyticsOrigin.end()
                 viewer = nil
                 playPipIfNeeded()
             }, addAccesoryOnCopiedView: { [weak self] stableId, view in
@@ -1757,6 +1802,7 @@ public class GalleryViewer: NSResponder {
             })
         } else {
             window.orderOut(nil)
+            analyticsOrigin.end()
             self.removeCaptureExclusion()
             if viewer === self {
                 viewer = nil
@@ -1771,6 +1817,8 @@ public class GalleryViewer: NSResponder {
     }
     
     public func clean() {
+        Analytics.shared.screens.hideStandalone(owner: self)
+        analyticsOrigin.end()
         removeCaptureExclusion()
         indexDisposable.dispose()
         disposable.dispose()
@@ -1782,7 +1830,9 @@ public class GalleryViewer: NSResponder {
     }
 
     private func updateCaptureExclusion() {
+        analyticsOrigin.restrict(messages: pager.selectedItem?.entry.message.map { [$0] } ?? [])
         if viewer === self {
+            Analytics.shared.screens.showStandalone(.mediaViewer, owner: self, context: analyticsOrigin.context)
         }
         let isProtected = pager.selectedItem?.entry.isProtected == true
             || pager.selectedItem?.entry.message?.isCopyProtected(cachedData: cachedPeerData) == true
@@ -1811,11 +1861,14 @@ public func closeGalleryViewer(_ animated: Bool) {
     viewer?.close(animated)
 }
 
-
 public func showChatGallery(context: any AccountContextProtocol, message:Message, _ delegate:InteractionContentViewProtocol? = nil, _ contentInteractions:(any GalleryContentInteractions)? = nil, type: GalleryAppearType = .history, reversed: Bool = false, chatMode: ChatMode?, chatLocation: ChatLocation?, contextHolder: Atomic<ChatLocationContextHolder?> = Atomic(value: nil), cachedPeerData: CachedPeerData? = nil) {
+    showChatGallery(context: context, message: message, delegate, contentInteractions, type: type, reversed: reversed, chatMode: chatMode, chatLocation: chatLocation, contextHolder: contextHolder, cachedPeerData: cachedPeerData, analyticsContext: nil)
+}
+
+public func showChatGallery(context: any AccountContextProtocol, message:Message, _ delegate:InteractionContentViewProtocol? = nil, _ contentInteractions:(any GalleryContentInteractions)? = nil, type: GalleryAppearType = .history, reversed: Bool = false, chatMode: ChatMode?, chatLocation: ChatLocation?, contextHolder: Atomic<ChatLocationContextHolder?> = Atomic(value: nil), cachedPeerData: CachedPeerData? = nil, analyticsContext: AnalyticsContext?) {
     if viewer == nil {
         viewer?.clean()
-        let gallery = GalleryViewer(context: context, message: message, delegate, contentInteractions, type: type, reversed: reversed, chatMode: chatMode, chatLocation: chatLocation, contextHolder: contextHolder, cachedPeerData: cachedPeerData)
+        let gallery = GalleryViewer(context: context, message: message, delegate, contentInteractions, type: type, reversed: reversed, chatMode: chatMode, chatLocation: chatLocation, contextHolder: contextHolder, cachedPeerData: cachedPeerData, analyticsContext: analyticsContext)
         gallery.show()
     }
 }

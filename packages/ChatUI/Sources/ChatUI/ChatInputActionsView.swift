@@ -82,6 +82,7 @@ public class ChatInputActionsView: View, Notifable {
 
     public var scheduled:ImageButton?
     private var secretTimer:ImageButton?
+    private var secretTimerImageKey: String?
 
     public init(frame frameRect: NSRect, chatInteraction:ChatInteraction) {
         self.chatInteraction = chatInteraction
@@ -173,13 +174,28 @@ public class ChatInputActionsView: View, Notifable {
         suggestPost.set(image: theme.icons.chat_input_suggest_post, for: .Normal)
         _ = suggestPost.sizeToFit()
 
-        if let timeout = chatInteraction.presentation.messageSecretTimeout?.timeout?.effectiveValue {
-            secretTimer?.set(image: theme.chat.messageSecretTimer(shortTimeIntervalString(value: timeout)), for: .Normal)
-        } else {
-            secretTimer?.set(image: theme.icons.chatSecretTimer, for: .Normal)
-        }
+        updateSecretTimerImage(chatInteraction.presentation)
 
         scheduled?.set(image: theme.icons.chatInputScheduled, for: .Normal)
+    }
+
+    private func updateSecretTimerImage(_ value: ChatPresentationInterfaceState) {
+        guard let secretTimer else {
+            secretTimerImageKey = nil
+            return
+        }
+        let text = (value.messageSecretTimeout?.timeout?.effectiveValue).map { shortTimeIntervalString(value: $0) }
+        let key = "\(ObjectIdentifier(theme))_\(text ?? "")"
+        if key == secretTimerImageKey {
+            return
+        }
+        secretTimerImageKey = key
+        if let text {
+            secretTimer.set(image: theme.chat.messageSecretTimer(text), for: .Normal)
+        } else {
+            secretTimer.set(image: theme.icons.chatSecretTimer, for: .Normal)
+        }
+        secretTimer.imageView.animates = true
     }
 
     private func updateEntertainmentIcon() {
@@ -259,6 +275,8 @@ public class ChatInputActionsView: View, Notifable {
                             return strings().voiceOverSelfDestructTimerOff
                         }
                         secretTimer = timer
+                        secretTimerImageKey = nil
+                        timer.imageView.animates = false
                         secretTimer?.set(image: theme.icons.chatSecretTimer, for: .Normal)
                         _ = secretTimer?.sizeToFit(.zero, NSMakeSize(40, 40), thatFit: true)
                         addSubview(secretTimer!)
@@ -285,11 +303,7 @@ public class ChatInputActionsView: View, Notifable {
                     secretTimer = nil
                 }
 
-                if let timeout = value.messageSecretTimeout?.timeout?.effectiveValue {
-                    secretTimer?.set(image: theme.chat.messageSecretTimer(shortTimeIntervalString(value: timeout)), for: .Normal)
-                } else {
-                    secretTimer?.set(image: theme.icons.chatSecretTimer, for: .Normal)
-                }
+                updateSecretTimerImage(value)
 
                 if let peer = value.peer {
                     setExtraButton(muteChannelMessages, hidden: !peer.isChannel || !peer.canSendMessage(value.chatMode.isThreadMode) || !value.effectiveInput.inputText.isEmpty || value.interfaceState.editState != nil, animated: animated)

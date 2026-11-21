@@ -1,4 +1,5 @@
 import Cocoa
+import ComponentsUI
 import TGUIKit
 import UniqueGiftBackground
 import AvatarEditorUI
@@ -26,6 +27,7 @@ import TelegramTheme
 import TelegramUtils
 import InlineStickerLayer
 import NagramCore
+import AppAnalytics
 
 private func profileButtonColor(over background: NSColor, isDark: Bool) -> NSColor {
     let base = background.usingColorSpace(.sRGB) ?? background
@@ -43,6 +45,12 @@ private func profileButtonColor(over background: NSColor, isDark: Bool) -> NSCol
 private func actionItems<Context: AccountContextProtocol>(item: PeerInfoHeadItem<Context>, width: CGFloat, theme: TelegramPresentationTheme) -> [ActionItem] {
     
     var items:[ActionItem] = []
+    var analyticsItems: [ObjectIdentifier: AnalyticsMenuItems.PeerInfoMore] = [:]
+    func markAnalytics(_ value: AnalyticsMenuItems.PeerInfoMore) {
+        if let last = items.last {
+            analyticsItems[ObjectIdentifier(last)] = value
+        }
+    }
     
     var rowItemsCount: Int = 1
     
@@ -90,20 +98,27 @@ private func actionItems<Context: AccountContextProtocol>(item: PeerInfoHeadItem
             }
         }
         if peer.id != item.context.peerId {
-            let value = item.peerView.notificationSettings?.isRemovedFromTotalUnreadCount(default: false) ?? false
+            let value = item.peerView.notificationSettings?.isRemovedFromTotalUnreadCount(default: item.mutedByDefault) ?? false
             items.append(ActionItem(text: value ? strings().peerInfoActionUnmute : strings().peerInfoActionMute, color: item.accentColor, image: value ? theme.icons.profile_unmute : theme.icons.profile_mute, animation: .menu_mute, action: {
                 arguments.toggleNotifications(value)
             }))
         }
         
         if !peer.isBot {
-            
+            if peerInfoUserReportTarget(peer, accountPeerId: item.context.peerId) != nil {
+                items.append(ActionItem(text: strings().peerInfoActionReport, color: item.accentColor, image: theme.icons.profile_report, animation: .menu_report, action: {
+                    arguments.reportUser(peer)
+                }))
+                markAnalytics(.report)
+            }
+
             let payStars = (item.peerView.cachedData as? CachedUserData)?.sendPaidMessageStars != nil
             if !(item.peerView.peers[item.peerView.peerId] is TelegramSecretChat), arguments.context.peerId != peer.id, !isServicePeer(peer) && !peer.rawDisplayTitle.isEmpty, !payStars {
                 items.append(ActionItem(text: strings().peerInfoActionSecretChat, color: item.accentColor, image: theme.icons.profile_secret_chat, animation: .menu_lock, action: arguments.startSecretChat))
             }
             if peer.id != item.context.peerId, item.peerView.peerIsContact, peer.phone != nil {
                 items.append(ActionItem(text: strings().peerInfoActionShare, color: item.accentColor, image: theme.icons.profile_share, animation: .menu_forward, action: arguments.shareContact))
+                markAnalytics(.share)
             }
             if peer.id != item.context.peerId, !peer.isDeleted, let cachedData = item.peerView.cachedData as? CachedUserData {
                 if cachedData.disallowedGifts != .All {
@@ -119,7 +134,7 @@ private func actionItems<Context: AccountContextProtocol>(item: PeerInfoHeadItem
                     guard PeerInfoUIHooks.shared.walletHooks.hasWallet(context) else {
                         return
                     }
-                    PeerInfoUIHooks.shared.walletHooks.sendMoneyObserved(context, peer)
+                    PeerInfoUIHooks.shared.walletHooks.sendMoneyObserved(context, peer, analyticsContext: arguments.captureAnalyticsContext())
                 }))
             }
             if !(item.peerView.peers[item.peerView.peerId] is TelegramSecretChat), let cachedData = item.peerView.cachedData as? CachedUserData {
@@ -175,6 +190,7 @@ private func actionItems<Context: AccountContextProtocol>(item: PeerInfoHeadItem
                 items.append(ActionItem(text: (!cachedData.isBlocked ? strings().peerInfoBlockUser : strings().peerInfoUnblockUser), color: item.accentColor, image: !cachedData.isBlocked ? theme.icons.profile_block : theme.icons.profile_unblock, animation: cachedData.isBlocked ? .menu_unblock : .menu_restrict, destruct: true, action: {
                     arguments.updateBlocked(peer: peer, !cachedData.isBlocked, false)
                 }))
+                markAnalytics(cachedData.isBlocked ? .unblock : .block)
             }
         } else if let botInfo = peer.botInfo {
             
@@ -182,12 +198,14 @@ private func actionItems<Context: AccountContextProtocol>(item: PeerInfoHeadItem
                 items.append(ActionItem(text: !cachedData.isBlocked ? strings().peerInfoStopBot : strings().peerInfoRestartBot, color: item.accentColor, image: !cachedData.isBlocked ? theme.icons.profile_block : theme.icons.profile_unblock, animation: cachedData.isBlocked ? .menu_unblock : .menu_restrict, destruct: true, action: {
                     arguments.updateBlocked(peer: peer, !cachedData.isBlocked, true)
                 }))
+                markAnalytics(cachedData.isBlocked ? .unblock : .block)
             }
 
             if let address = peer.addressName, !address.isEmpty {
                 items.append(ActionItem(text: strings().peerInfoBotShare, color: item.accentColor, image: theme.icons.profile_share, animation: .menu_forward, action: {
                     arguments.botShare(address)
                 }))
+                markAnalytics(.share)
             }
             
             if botInfo.flags.contains(.worksWithGroups) {
@@ -206,8 +224,9 @@ private func actionItems<Context: AccountContextProtocol>(item: PeerInfoHeadItem
                         items.append(ActionItem(text: strings().peerInfoBotPrivacy, color: item.accentColor, image: theme.icons.profile_more, animation: .menu_plus, action: arguments.botPrivacy))
                     }
                 }
-                if peer.id != verifyCodePeerId, botInfo.flags.contains(.canEdit) {
+                if peer.id != verifyCodePeerId, !botInfo.flags.contains(.canEdit) {
                     items.append(ActionItem(text: strings().peerInfoReportBot, color: item.accentColor, image: theme.icons.profile_report, animation: .menu_report, action: arguments.reportBot))
+                    markAnalytics(.report)
                 }
                 
                 
@@ -223,7 +242,7 @@ private func actionItems<Context: AccountContextProtocol>(item: PeerInfoHeadItem
                 arguments.addMember(access.canCreateInviteLink)
             }))
         }
-        if let value = item.peerView.notificationSettings?.isRemovedFromTotalUnreadCount(default: false) {
+        if let value = item.peerView.notificationSettings?.isRemovedFromTotalUnreadCount(default: item.mutedByDefault) {
             items.append(ActionItem(text: value ? strings().peerInfoActionUnmute : strings().peerInfoActionMute, color: item.accentColor, image: value ? theme.icons.profile_unmute : theme.icons.profile_mute, animation: value ? .menu_unmuted : .menu_mute, action: {
                 arguments.toggleNotifications(value)
             }))
@@ -232,6 +251,7 @@ private func actionItems<Context: AccountContextProtocol>(item: PeerInfoHeadItem
             items.append(ActionItem(text: strings().peerInfoActionBoostGroup, color: item.accentColor, image: theme.icons.profile_boost, animation: .menu_boost, action: {
                 arguments.boosts(peer.groupAccess)
             }))
+            markAnalytics(.boosts)
             if peer.groupAccess.canEditGroupInfo {
                 items.append(ActionItem(text: strings().peerInfoActionAcrhivedStories, color: item.accentColor, image: theme.icons.profile_archive, animation: .menu_archive, action: {
                     arguments.archiveStories()
@@ -261,30 +281,36 @@ private func actionItems<Context: AccountContextProtocol>(item: PeerInfoHeadItem
                 items.append(ActionItem(text: strings().peerInfoActionStatistics, color: item.accentColor, image: theme.icons.profile_stats, animation: .menu_statistics, action: {
                     arguments.stats(cachedData.statsDatacenterId)
                 }))
+                markAnalytics(.stats)
             } else if peer.isChannel, peer.isAdmin {
                 items.append(ActionItem(text: strings().peerInfoActionStatistics, color: item.accentColor, image: theme.icons.profile_stats, animation: .menu_statistics, action: {
                     arguments.stats(0)
                 }))
+                markAnalytics(.stats)
             }
         }
         if access.canReport {
             items.append(ActionItem(text: strings().peerInfoActionReport, color: item.accentColor, image: theme.icons.profile_report, animation: .menu_report, destruct: false, action: arguments.report))
+            markAnalytics(.report)
         }
         
         
         if let group = peer as? TelegramGroup {
             if case .Member = group.membership {
                 items.append(ActionItem(text: strings().peerInfoActionLeave, color: item.accentColor, image: theme.icons.profile_leave, animation: .menu_leave, destruct: true, action: arguments.delete))
+                markAnalytics(.leave)
             }
         } else if let group = peer as? TelegramChannel {
             if case .member = group.participationStatus {
                 items.append(ActionItem(text: strings().peerInfoActionLeave, color: item.accentColor, image: theme.icons.profile_leave, animation: .menu_leave, destruct: true, action: arguments.delete))
+                markAnalytics(.leave)
             }
         }
         if peer.isGroup || peer.isSupergroup || peer.isGigagroup, peer.groupAccess.isCreator {
             items.append(ActionItem(text: strings().peerInfoActionDeleteGroup, color: item.accentColor, image: theme.icons.profile_leave, animation: .menu_delete, destruct: true, action: {
                 arguments.delete(force: true)
             }))
+            markAnalytics(.delete)
         }
         
         
@@ -314,7 +340,7 @@ private func actionItems<Context: AccountContextProtocol>(item: PeerInfoHeadItem
             }))
         }
         
-        if let value = item.peerView.notificationSettings?.isRemovedFromTotalUnreadCount(default: false) {
+        if let value = item.peerView.notificationSettings?.isRemovedFromTotalUnreadCount(default: item.mutedByDefault) {
             items.append(ActionItem(text: value ? strings().peerInfoActionUnmute : strings().peerInfoActionMute, color: item.accentColor, image: value ? theme.icons.profile_unmute : theme.icons.profile_mute, animation: value ? .menu_unmuted : .menu_mute, action: {
                 arguments.toggleNotifications(value)
             }))
@@ -343,6 +369,7 @@ private func actionItems<Context: AccountContextProtocol>(item: PeerInfoHeadItem
                 items.append(ActionItem(text: strings().peerInfoActionStatistics, color: item.accentColor, image: theme.icons.profile_stats, animation: .menu_statistics, action: {
                     arguments.stats(cachedData.statsDatacenterId, monetization: cachedData.flags.contains(.canViewRevenue), stars: cachedData.flags.contains(.canViewStarsRevenue))
                 }))
+                markAnalytics(.stats)
             }
         }
         if let cachedData = item.peerView.cachedData as? CachedChannelData {
@@ -357,6 +384,7 @@ private func actionItems<Context: AccountContextProtocol>(item: PeerInfoHeadItem
         items.append(ActionItem(text: strings().peerInfoActionBoostChannel, color: item.accentColor, image: theme.icons.profile_boost, animation: .menu_boost, action: {
             arguments.boosts(peer.groupAccess)
         }))
+        markAnalytics(.boosts)
         
         if peer.groupAccess.canEditGroupInfo {
             
@@ -367,15 +395,18 @@ private func actionItems<Context: AccountContextProtocol>(item: PeerInfoHeadItem
         
         if let address = peer.addressName, !address.isEmpty {
             items.append(ActionItem(text: strings().peerInfoActionShare, color: item.accentColor, image: theme.icons.profile_share, animation: .menu_share, action: arguments.share))
+            markAnalytics(.share)
         }
     
         if peer.groupAccess.canReport {
             items.append(ActionItem(text: strings().peerInfoActionReport, color: item.accentColor, image: theme.icons.profile_report, animation: .menu_report, action: arguments.report))
+            markAnalytics(.report)
         }
         
         switch peer.participationStatus {
         case .member:
             items.append(ActionItem(text: strings().peerInfoActionLeave, color: item.accentColor, image: theme.icons.profile_leave, animation: .menu_leave, destruct: true, action: arguments.delete))
+            markAnalytics(.leave)
         default:
             break
         }
@@ -388,6 +419,7 @@ private func actionItems<Context: AccountContextProtocol>(item: PeerInfoHeadItem
         }))
         
         items.append(ActionItem(text: strings().peerInfoActionShare, color: item.accentColor, image: theme.icons.profile_share, animation: .menu_share, action: arguments.share))
+        markAnalytics(.share)
 
     }
     
@@ -413,9 +445,19 @@ private func actionItems<Context: AccountContextProtocol>(item: PeerInfoHeadItem
     
     if items.count > rowItemsCount {
         var subItems:[SubActionItem] = []
+        let analyticsScreen: AnalyticsScreen = item.threadId != nil ? .peerInfoTopic : .peerInfo
         while items.count > rowItemsCount - 1 {
             let item = items.removeLast()
-            let action = item.action
+            let action: () -> Void
+            if let analyticsItem = analyticsItems[ObjectIdentifier(item)] {
+                let original = item.action
+                action = {
+                    Analytics.shared.send(AnalyticsEvents.menuSelect(peerInfoMore: analyticsItem, screen: analyticsScreen))
+                    original()
+                }
+            } else {
+                action = item.action
+            }
             subItems.insert(SubActionItem(text: item.text, animation: item.animation, destruct: item.destruct, action: action), at: 0)
         }
         if !subItems.isEmpty {
@@ -427,6 +469,18 @@ private func actionItems<Context: AccountContextProtocol>(item: PeerInfoHeadItem
 }
 
 class PeerInfoHeadItem<Context: AccountContextProtocol>: GeneralRowItem {
+    var usesCompactDetachedHeader: Bool {
+        return context.isExternal && !editing && table?.window?.styleMask.contains(.fullScreen) != true && DetachedWindowHeaderLayout.usesCompactLayout(width: width)
+    }
+
+    override var inset: NSEdgeInsets {
+        return usesCompactDetachedHeader ? NSEdgeInsets() : super.inset
+    }
+
+    override var blockWidth: CGFloat {
+        return usesCompactDetachedHeader ? width : super.blockWidth
+    }
+
     override var height: CGFloat {
         if !editing && isAvatarExpanded {
             return expandedAvatarHeight + expandedAvatarInsets
@@ -522,6 +576,13 @@ class PeerInfoHeadItem<Context: AccountContextProtocol>: GeneralRowItem {
         } else {
             return [NSColor(0xffffff, 0), NSColor(0xffffff, 0)]
         }
+    }
+    
+    var patternDarkensCover: Bool {
+        if let emojiStatus = peer?.emojiStatus, case .starGift = emojiStatus.content {
+            return false
+        }
+        return nameColor != nil && threadId == nil && !editing
     }
     
     var hasBackgroundGradient: Bool {
@@ -661,12 +722,14 @@ class PeerInfoHeadItem<Context: AccountContextProtocol>: GeneralRowItem {
     
     let context: Context
     let peer:Peer?
+    let hideEmojiStatus: Bool
     let threadPeer: EnginePeer?
     let isVerified: Bool
     let isPremium: Bool
     let isScam: Bool
     let isFake: Bool
     let isMuted: Bool
+    let mutedByDefault: Bool
     let peerView:PeerView
     let hasLiveStream: Bool
     
@@ -751,8 +814,13 @@ class PeerInfoHeadItem<Context: AccountContextProtocol>: GeneralRowItem {
     fileprivate var effectiveStatusLayout: TextViewLayout {
         return isAvatarExpanded ? overlayTextLayout(statusLayout, color: NSColor.white.withAlphaComponent(0.8), alwaysStaticItems: true) : statusLayout
     }
-    init(_ initialSize:NSSize, stableId:AnyHashable, context: Context, arguments: PeerInfoArguments<Context>, peerView:PeerView, threadData: MessageHistoryThreadData?, threadId: Int64?, stories: PeerExpiringStoryListContext.State? = nil, viewType: GeneralViewType, editing: Bool, updatingPhotoState:PeerInfoUpdatingPhotoState? = nil, updatePhoto:@escaping(NSImage?, Control?)->Void = { _, _ in }, giftsContext: ProfileGiftsContext? = nil, threadPeer: EnginePeer? = nil, savedMusic: ProfileSavedMusicContext.State? = nil, profileSavedMusic: ProfileSavedMusicContext? = nil) {
-        let peer = peerViewMainPeer(peerView)
+    init(_ initialSize:NSSize, stableId:AnyHashable, context: Context, arguments: PeerInfoArguments<Context>, peerView:PeerView, threadData: MessageHistoryThreadData?, threadId: Int64?, stories: PeerExpiringStoryListContext.State? = nil, viewType: GeneralViewType, editing: Bool, updatingPhotoState:PeerInfoUpdatingPhotoState? = nil, updatePhoto:@escaping(NSImage?, Control?)->Void = { _, _ in }, giftsContext: ProfileGiftsContext? = nil, threadPeer: EnginePeer? = nil, savedMusic: ProfileSavedMusicContext.State? = nil, profileSavedMusic: ProfileSavedMusicContext? = nil, mutedByDefault: Bool = false) {
+        var peer = peerViewMainPeer(peerView)
+        let hideEmojiStatus = (peerView.cachedData as? CachedUserData)?.isSuspiciousPeer == true
+        self.hideEmojiStatus = hideEmojiStatus
+        if hideEmojiStatus, let user = peer as? TelegramUser {
+            peer = user.withUpdatedEmojiStatus(nil)
+        }
         self.peer = peer
         self.threadPeer = threadPeer
         self.threadData = threadData
@@ -769,7 +837,8 @@ class PeerInfoHeadItem<Context: AccountContextProtocol>: GeneralRowItem {
         self.isPremium = peer?.isPremium ?? false
         self.isScam = peer?.isScam ?? false
         self.isFake = peer?.isFake ?? false
-        self.isMuted = peerView.notificationSettings?.isRemovedFromTotalUnreadCount(default: false) ?? false
+        self.mutedByDefault = mutedByDefault
+        self.isMuted = peerView.notificationSettings?.isRemovedFromTotalUnreadCount(default: mutedByDefault) ?? false
         self.updatingPhotoState = updatingPhotoState
         self.updatePhoto = updatePhoto
         
@@ -779,8 +848,8 @@ class PeerInfoHeadItem<Context: AccountContextProtocol>: GeneralRowItem {
             self.musicFile = nil
         }
 
-        if #available(macOS 10.15, *), !editing, threadId == nil, let user = peer as? TelegramUser, peerView.peerId.namespace == Namespaces.Peer.CloudUser,
-           user.id != context.peerId, let walletHooks = PeerInfoUIHooks.shared.wallet as? PeerInfoWalletHooks, walletHooks.hasWallet(context),
+        if #available(macOS 10.15, *), !editing, threadId == nil, peer is TelegramUser, peerView.peerId.namespace == Namespaces.Peer.CloudUser,
+           let walletHooks = PeerInfoUIHooks.shared.wallet as? PeerInfoWalletHooks, walletHooks.hasWallet(context),
            let walletCard = (peerView.cachedData as? CachedUserData)?.walletCard, walletCard.balance >= 100_000_000 {
             self.walletBalance = walletCard.balance
         } else {
@@ -871,17 +940,17 @@ class PeerInfoHeadItem<Context: AccountContextProtocol>: GeneralRowItem {
         
         
         if let cachedData = peerView.cachedData as? CachedChannelData, threadData == nil, let peer = peer, peer.isGroup || peer.isSupergroup || peer.isGigagroup {
-            let onlineMemberCount:Signal<Int32?, NoError>
+            let onlineMemberCount: Signal<(total: Int32?, recent: Int32)?, NoError>
             if (cachedData.participantsSummary.memberCount ?? 0) > 200 {
-                onlineMemberCount = context.peerChannelMemberCategoriesContextsManager.recentOnline(peerId: peerView.peerId) |> map(Optional.init) |> deliverOnMainQueue
+                onlineMemberCount = context.peerChannelMemberCategoriesContextsManager.recentOnline(peerId: peerView.peerId) |> map { value -> (total: Int32?, recent: Int32)? in (total: nil, recent: value) } |> deliverOnMainQueue
             } else {
-                onlineMemberCount = context.peerChannelMemberCategoriesContextsManager.recentOnlineSmall(peerId: peerView.peerId)  |> map(Optional.init) |> deliverOnMainQueue
+                onlineMemberCount = context.peerChannelMemberCategoriesContextsManager.recentOnlineSmallCounts(peerId: peerView.peerId) |> map { value -> (total: Int32?, recent: Int32)? in (total: value.total, recent: value.recent) } |> deliverOnMainQueue
             }
             self.onlineMemberCountDisposable.set(onlineMemberCount.start(next: { [weak self] count in
                 guard let `self` = self else {
                     return
                 }
-                let result = stringStatus(for: peerView, context: context, theme: PeerStatusStringTheme(titleFont: .medium(.huge), titleColor: PeerInfoHeadItem.textColor(peer, threadId: threadId, context: context), statusFont: threadId != nil ? .medium(.text) : .normal(.text), statusColor: PeerInfoHeadItem.grayTextColor(peer, threadId: threadId, context: context), highlightIfActivity: false), onlineMemberCount: count)
+                let result = stringStatus(for: peerView, context: context, theme: PeerStatusStringTheme(titleFont: .medium(.huge), titleColor: PeerInfoHeadItem.textColor(peer, threadId: threadId, context: context), statusFont: threadId != nil ? .medium(.text) : .normal(.text), statusColor: PeerInfoHeadItem.grayTextColor(peer, threadId: threadId, context: context), highlightIfActivity: false), onlineMemberCount: count?.recent, memberCount: count?.total)
 
                 if result != self.result {
                     self.result = result
@@ -946,7 +1015,7 @@ class PeerInfoHeadItem<Context: AccountContextProtocol>: GeneralRowItem {
 
     func openWalletBalance(morphSource: (() -> NSView?)? = nil) {
         if #available(macOS 10.15, *), let peer {
-            PeerInfoUIHooks.shared.walletHooks.showPeerBalanceObserved(context, peer, morphSource)
+            PeerInfoUIHooks.shared.walletHooks.showPeerBalanceObserved(context, peer, morphSource, analyticsContext: arguments.captureAnalyticsContext())
         }
     }
     
@@ -1142,7 +1211,7 @@ private final class NameContainer : View {
         let context = item.context
         
         if let peer = item.peer {
-            let control = PremiumStatusControl.control(peer, account: item.context.account, inlinePacksContext: item.context.inlinePacksContext, left: false, isSelected: false, isBig: true, color: item.accentColor, cached: self.statusControl, animated: animated)
+            let control = PremiumStatusControl.control(peer, account: item.context.account, inlinePacksContext: item.context.inlinePacksContext, left: false, isSelected: false, isBig: true, color: item.accentColor, cached: self.statusControl, animated: animated, autoupdate: !item.hideEmojiStatus)
             if let control = control {
                 self.statusControl = control
                 self.addSubview(control)
@@ -1722,6 +1791,7 @@ private final class PeerInfoHeadView<Context: AccountContextProtocol> : GeneralC
     
 
     private let actionsView = View()
+    private var actionsLayoutWidth: CGFloat?
     private weak var giftTooltip: ShimmerTooltipView?
     private var didRunGiftStatusIntro = false
     private var photoEditableView: PeerInfoPhotoEditableView?
@@ -1843,6 +1913,7 @@ private final class PeerInfoHeadView<Context: AccountContextProtocol> : GeneralC
             return
         }
         isTogglingAvatar = true
+        photoContainer.layer?.removeAnimation(forKey: "transform")
         item.isAvatarExpanded = expanded
         item.noteHeightOfRow(animated: true)
         item.arguments.avatarExpandedDidChange?()
@@ -2285,9 +2356,18 @@ private final class PeerInfoHeadView<Context: AccountContextProtocol> : GeneralC
     }
     
     
+    override var maxBlockWidth: CGFloat {
+        if let item = item as? PeerInfoHeadItem<Context>, item.usesCompactDetachedHeader {
+            return frame.width
+        }
+        return super.maxBlockWidth
+    }
+
     override func updateLayout(size: NSSize, transition: ContainedViewLayoutTransition) {
         super.updateLayout(size: size, transition: transition)
-        
+        if let item = item as? PeerInfoHeadItem<Context>, item.usesCompactDetachedHeader {
+            containerView.setCorners([], animated: transition.isAnimated, frame: containerView.frame)
+        }
         
         let statusContainerSize: NSSize
         statusContainerSize = NSMakeSize(statusContainer.subviewsWidthSize.width + 4, statusContainer.subviewsWidthSize.height)
@@ -2302,6 +2382,9 @@ private final class PeerInfoHeadView<Context: AccountContextProtocol> : GeneralC
             return
         }
 
+        if actionsLayoutWidth != containerView.frame.width {
+            layoutActionItems(item.items, animated: false)
+        }
         let collapsedPhotoFrame = NSMakeRect(floorToScreenPixels(backingScaleFactor, (containerView.frame.width - 120) / 2), 20, 120, 120)
         let photoContainerFrame: NSRect
         if item.isAvatarExpanded {
@@ -2515,13 +2598,16 @@ private final class PeerInfoHeadView<Context: AccountContextProtocol> : GeneralC
         }
 
         let actionItemInset = ActionItem.actionItemInsetWidth(isColorfull: item.nameColor != nil)
-        let sideInset: CGFloat = 14
+        let isDetachedProfile = item.usesCompactDetachedHeader
+        let sideInset: CGFloat = isDetachedProfile ? DetachedWindowHeaderLayout.sideInset * 2 : 14
         let width = (item.blockWidth - sideInset - item.inset.left - item.inset.right - (actionItemInset * CGFloat(items.count - 1)))
+        let buttonWidth = width / CGFloat(items.count)
 
-        return min(170, width / CGFloat(items.count))
+        return isDetachedProfile ? buttonWidth : min(170, buttonWidth)
     }
     
     private func layoutActionItems(_ items: [ActionItem], animated: Bool) {
+        actionsLayoutWidth = containerView.frame.width
         
         if !items.isEmpty, let rowItem = self.item as? PeerInfoHeadItem<Context> {
             let maxActionSize: NSSize = items.max(by: { $0.size.height < $1.size.height })!.size
@@ -2550,7 +2636,10 @@ private final class PeerInfoHeadView<Context: AccountContextProtocol> : GeneralC
                 let item = rowItem.isAvatarExpanded ? ActionItem(text: item.text, color: .white, image: item.image, animation: item.animation, destruct: item.destruct, action: item.action, subItems: item.subItems) : item
                 view.updateAndLayout(item: item, bgColor: buttonColor, useGlass: useGlass)
                 if item.subItems?.isEmpty == false, let menu = view.contextMenu {
+                    let screen: AnalyticsScreen = rowItem.threadId != nil ? .peerInfoTopic : .peerInfo
                     view.contextMenu = {
+                        let via: AnalyticsValues.Via = NSApp.currentEvent?.type == .rightMouseDown ? .rightClick : .click
+                        Analytics.shared.send(AnalyticsEvents.menuOpen(menu: .peerInfoMore, screen: screen, via: via))
                         return menu()
                     }
                 }
@@ -2692,6 +2781,7 @@ private final class PeerInfoHeadView<Context: AccountContextProtocol> : GeneralC
                 addSubview(current, positioned: .above, relativeTo: backgroundView)
             }
             
+            current.darkensCover = item.patternDarkensCover
             current.set(fileId: emoji, color: item.profileEmojiColor, context: item.context, animated: animated)
         } else if let view = self.emojiSpawn {
             performSubviewRemoval(view, animated: animated)

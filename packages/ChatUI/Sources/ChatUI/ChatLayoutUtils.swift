@@ -15,6 +15,18 @@ private var nagramStickerSize: NSSize {
     return NSMakeSize(floor(208 * scale), floor(208 * scale))
 }
 
+extension TelegramMediaFile {
+    var isChatStaticSticker: Bool {
+        if isStaticSticker {
+            return true
+        }
+        guard isSticker, mimeType == "image/webp", !isAnimated, !isVideo, !isVoice, !isMusic, let size = size else {
+            return false
+        }
+        return size >= 300 * 1024 && size <= 512 * 1024
+    }
+}
+
 public class ChatLayoutUtils: NSObject {
 
     public static func contentSize(for media:Media, with width: CGFloat, hasText: Bool = false, webpIsFile: Bool = false, groupedLayout: GroupedLayout? = nil, spacing: CGFloat = 4.0) -> NSSize {
@@ -66,7 +78,7 @@ public class ChatLayoutUtils: NSObject {
                 if let dimensions = dimensions {
                     size = dimensions.aspectFitted(size)
                 }
-            } else if file.isStaticSticker && !webpIsFile {
+            } else if file.isChatStaticSticker && !webpIsFile {
                 
                 var sz = nagramStickerSize
                 if file.fileName == "telegram-animoji.tgs" {

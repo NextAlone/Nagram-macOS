@@ -4,7 +4,7 @@ import PackageDescription
 
 let deps: [(String, String)] = [
     ("NagramCore", "../NagramCore"),
-
+    ("AppAnalytics", "../AppAnalytics"),
     ("TGUIKit", "../TGUIKit"),
     ("ColorPalette", "../ColorPalette"),
     ("InAppSettings", "../InAppSettings"),
