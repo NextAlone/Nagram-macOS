@@ -2,6 +2,6 @@ import Foundation
 import WidgetEngineXPC
 
 func installWidgetEngineService() {
-    let serviceName = WidgetEngineXPC.embeddedServiceName() ?? "ru.keepcoder.Telegram.WidgetEngineService"
+    let serviceName = WidgetEngineXPC.embeddedServiceName() ?? "xyz.nextalone.nagram.WidgetEngine"
     WidgetEngineXPC.install(serviceName: serviceName)
 }

@@ -19,7 +19,8 @@ Application identity:
 
 - Display name: Nagram.
 - Bundle identifier: `xyz.nextalone.nagram`, share extension
-  `xyz.nextalone.nagram.TelegramShare`, team `7P8CLHDH5G`. The app shares the
+  `xyz.nextalone.nagram.TelegramShare`, widget engine XPC service
+  `xyz.nextalone.nagram.WidgetEngine`, team `7P8CLHDH5G`. The app shares the
   iOS app's identifier and App Store Connect record (universal purchase); its
   share extension is distinct from the iOS `xyz.nextalone.nagram.Share`.
 - App group `7P8CLHDH5G.xyz.nextalone.nagram.macos` and the keychain groups keep
