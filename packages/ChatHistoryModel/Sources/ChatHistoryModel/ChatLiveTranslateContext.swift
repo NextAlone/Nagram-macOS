@@ -922,9 +922,11 @@ extension MessageTextEntityType {
 }
 
 public func chatTranslationState(context: any AccountContextProtocol, peerId: EnginePeer.Id) -> Signal<ChatTranslationState?, NoError> {
-    let baseLang = appAppearance.languageCode
-    return baseAppSettings(accountManager: context.sharedContext.accountManager)
-    |> mapToSignal { settings in
+    let baseLangSignal = languageSignal
+    |> map { $0.baseLanguageCode.replacingOccurrences(of: "-raw", with: "") }
+    |> distinctUntilChanged
+    return combineLatest(baseAppSettings(accountManager: context.sharedContext.accountManager), baseLangSignal)
+    |> mapToSignal { settings, baseLang in
         if !settings.translateChats {
             return .single(nil)
         }
@@ -941,6 +943,14 @@ public func chatTranslationState(context: any AccountContextProtocol, peerId: En
             if let cached = cached, cached.baseLang == baseLang {
                 if !dontTranslateLanguages.contains(cached.fromLang) {
                     return .single(cached)
+                } else {
+                    return .single(nil)
+                }
+            } else if let cached = cached {
+                let state = ChatTranslationState(baseLang: baseLang, fromLang: cached.fromLang, toLang: nil, isEnabled: nil, paywall: false)
+                let _ = updateChatTranslationState(engine: context.engine, peerId: peerId, state: state).start()
+                if !dontTranslateLanguages.contains(state.fromLang) {
+                    return .single(state)
                 } else {
                     return .single(nil)
                 }
